@@ -1,22 +1,33 @@
 #include "IniDocument.h"
 
 #include <algorithm>
-#include <fstream>
+#include <cstdio>
 
 #include "TextUtil.h"
 
 namespace csvvw {
 
+namespace {
+// stdio instead of iostreams: keeps the plugin DLL small.
+FILE* openFile(const std::filesystem::path& p, bool write) {
+#ifdef _WIN32
+    return _wfopen(p.c_str(), write ? L"wb" : L"rb");
+#else
+    return std::fopen(p.c_str(), write ? "wb" : "rb");
+#endif
+}
+}  // namespace
+
 bool readFileBytes(const std::filesystem::path& p, std::string& out) {
-    std::ifstream f(p, std::ios::binary);
+    FILE* f = openFile(p, false);
     if (!f) return false;
-    f.seekg(0, std::ios::end);
-    auto size = f.tellg();
-    if (size < 0) return false;
-    out.resize(static_cast<size_t>(size));
-    f.seekg(0, std::ios::beg);
-    if (size > 0 && !f.read(out.data(), size)) return false;
-    return true;
+    out.clear();
+    char buf[16384];
+    size_t n;
+    while ((n = std::fread(buf, 1, sizeof buf, f)) > 0) out.append(buf, n);
+    bool ok = !std::ferror(f);
+    std::fclose(f);
+    return ok;
 }
 
 IniDocument IniDocument::parse(std::u16string_view text) { return parse(utf16ToUtf8(text)); }
@@ -180,11 +191,12 @@ std::string IniDocument::serialize() const {
 }
 
 bool IniDocument::saveFile(const std::filesystem::path& p) const {
-    std::ofstream f(p, std::ios::binary | std::ios::trunc);
+    FILE* f = openFile(p, true);
     if (!f) return false;
     auto s = serialize();
-    f.write(s.data(), static_cast<std::streamsize>(s.size()));
-    return static_cast<bool>(f);
+    bool ok = std::fwrite(s.data(), 1, s.size(), f) == s.size();
+    ok = (std::fclose(f) == 0) && ok;
+    return ok;
 }
 
 }  // namespace csvvw

@@ -23,10 +23,11 @@ option(TCL_BUILD_PLUGIN "Build the Total Commander plugin (.wlx64, Windows only)
 option(TCL_BUILD_TESTS "Build unit tests" ON)
 
 if(MSVC)
-  add_compile_options(/utf-8 /W4 /permissive- /Zc:__cplusplus /EHsc)
+  add_compile_options(/utf-8 /W4 /permissive- /Zc:__cplusplus /EHsc $<$<CONFIG:Release>:/Gy> $<$<CONFIG:Release>:/Gw>)
+  add_link_options($<$<CONFIG:Release>:/OPT:REF> $<$<CONFIG:Release>:/OPT:ICF>)
   add_compile_definitions(_CRT_SECURE_NO_WARNINGS)
 else()
-  add_compile_options(-Wall -Wextra -Wno-unused-parameter -Wno-missing-field-initializers)
+  add_compile_options(-Wall -Wextra -Wno-unused-parameter -Wno-missing-field-initializers -ffunction-sections -fdata-sections)
 endif()
 
 # ---------------------------------------------------------------- core (portable)
@@ -71,7 +72,7 @@ if(TCL_BUILD_PLUGIN)
   target_compile_definitions(tcl-csvvw PRIVATE UNICODE _UNICODE WIN32_LEAN_AND_MEAN NOMINMAX _WIN32_WINNT=0x0A00)
   set_target_properties(tcl-csvvw PROPERTIES PREFIX "" SUFFIX ".wlx64")
   if(MINGW)
-    target_link_options(tcl-csvvw PRIVATE -static -static-libgcc -static-libstdc++ $<$<CONFIG:Release>:-s>)
+    target_link_options(tcl-csvvw PRIVATE -static -static-libgcc -static-libstdc++ -Wl,--gc-sections $<$<CONFIG:Release>:-s>)
   endif()
   # Copy the INI next to the built DLL so it can be used/tested in place.
   add_custom_command(TARGET tcl-csvvw POST_BUILD

@@ -97,6 +97,11 @@ WrapResult wrapText(std::u16string_view text, int width, size_t maxLines, const 
             break;
         }
         if (n == 0) n = 1;  // always make progress
+        if (n >= rest.size()) {
+            r.lines.push_back(rest);
+            pos = text.size();
+            break;
+        }
         // Back up to the last break opportunity inside the fitting prefix.
         size_t cut = n;
         // If the char right after the fitting prefix is a space, the prefix is a clean word end.
