@@ -1,0 +1,138 @@
+#include <windows.h>
+#include <commctrl.h>
+#include "resource.h"
+#include "version.h"
+
+LANGUAGE LANG_ENGLISH, SUBLANG_ENGLISH_US
+
+// ---------------------------------------------------------------- settings window
+IDD_CONFIG DIALOGEX 0, 0, 340, 268
+STYLE DS_SHELLFONT | DS_MODALFRAME | DS_CENTER | WS_POPUP | WS_CAPTION | WS_SYSMENU
+CAPTION "tcl-csvvw settings"
+FONT 9, "MS Shell Dlg 2", 400, 0, 1
+BEGIN
+    CONTROL         "", IDC_CONFIG_TABS, "SysTabControl32", WS_TABSTOP, 7, 7, 326, 232
+    PUSHBUTTON      "Open INI file", IDC_CONFIG_OPENINI, 7, 247, 62, 14
+    DEFPUSHBUTTON   "OK", IDOK, 175, 247, 50, 14
+    PUSHBUTTON      "Cancel", IDCANCEL, 229, 247, 50, 14
+    PUSHBUTTON      "&Apply", IDC_CONFIG_APPLY, 283, 247, 50, 14
+END
+
+IDD_PAGE_GENERAL DIALOGEX 0, 0, 316, 212
+STYLE DS_SHELLFONT | DS_CONTROL | WS_CHILD
+FONT 9, "MS Shell Dlg 2", 400, 0, 1
+BEGIN
+    GROUPBOX        "Files", -1, 4, 2, 308, 92
+    LTEXT           "&Extensions:", -1, 12, 16, 86, 9
+    EDITTEXT        IDC_GEN_EXTS, 100, 14, 204, 12, ES_AUTOHSCROLL
+    LTEXT           "Detect string (TC caches it: after changing extensions paste it into Options > Plugins > Lister > Configure):",
+                    -1, 12, 30, 292, 18
+    EDITTEXT        IDC_GEN_DETECT, 12, 49, 240, 12, ES_AUTOHSCROLL | ES_READONLY
+    PUSHBUTTON      "&Copy", IDC_GEN_COPY_DETECT, 256, 48, 48, 14
+    LTEXT           "Max file &size:", -1, 12, 68, 86, 9
+    EDITTEXT        IDC_GEN_MAXSIZE, 100, 66, 50, 12, ES_AUTOHSCROLL
+    LTEXT           "(bytes, or K / M / G)", -1, 156, 68, 140, 9
+    LTEXT           "Max cell c&haracters:", -1, 12, 82, 86, 9
+    EDITTEXT        IDC_GEN_MAXCELL, 100, 80, 50, 12, ES_AUTOHSCROLL
+    LTEXT           "(drawn / measured; search and copy use full text)", -1, 156, 82, 150, 9
+
+    GROUPBOX        "Parsing defaults (the right-click menu overrides them per file)", -1, 4, 98, 308, 84
+    LTEXT           "&Delimiter:", -1, 12, 112, 86, 9
+    COMBOBOX        IDC_GEN_DELIM, 100, 110, 80, 80, CBS_DROPDOWNLIST | WS_VSCROLL | WS_TABSTOP
+    LTEXT           "E&ncoding:", -1, 12, 128, 86, 9
+    COMBOBOX        IDC_GEN_ENCODING, 100, 126, 80, 80, CBS_DROPDOWNLIST | WS_VSCROLL | WS_TABSTOP
+    LTEXT           "First row is &header:", -1, 12, 144, 86, 9
+    COMBOBOX        IDC_GEN_HEADER_MODE, 100, 142, 80, 80, CBS_DROPDOWNLIST | WS_VSCROLL | WS_TABSTOP
+    AUTOCHECKBOX    "&Treat the first row as header when detection is inconclusive", IDC_GEN_HEADER_DEFAULT,
+                    12, 160, 292, 10
+
+    AUTOCHECKBOX    "Write debu&g log (tcl-csvvw.log, troubleshooting only)", IDC_GEN_DEBUGLOG, 12, 192, 292, 10
+END
+
+IDD_PAGE_VIEW DIALOGEX 0, 0, 316, 212
+STYLE DS_SHELLFONT | DS_CONTROL | WS_CHILD
+FONT 9, "MS Shell Dlg 2", 400, 0, 1
+BEGIN
+    GROUPBOX        "Font", -1, 4, 2, 308, 44
+    LTEXT           "&Font:", -1, 12, 16, 40, 9
+    COMBOBOX        IDC_VIEW_FONT, 54, 14, 130, 120, CBS_DROPDOWN | CBS_SORT | WS_VSCROLL | WS_TABSTOP
+    LTEXT           "Si&ze:", -1, 192, 16, 22, 9
+    EDITTEXT        IDC_VIEW_FONTSIZE, 216, 14, 30, 12, ES_NUMBER
+    CONTROL         "", IDC_VIEW_FONTSIZE_SPIN, "msctls_updown32",
+                    UDS_SETBUDDYINT | UDS_ALIGNRIGHT | UDS_AUTOBUDDY | UDS_ARROWKEYS | UDS_NOTHOUSANDS, 0, 0, 10, 12
+    LTEXT           "&Zoom %:", -1, 12, 31, 40, 9
+    EDITTEXT        IDC_VIEW_ZOOM, 54, 29, 36, 12, ES_NUMBER
+    CONTROL         "", IDC_VIEW_ZOOM_SPIN, "msctls_updown32",
+                    UDS_SETBUDDYINT | UDS_ALIGNRIGHT | UDS_AUTOBUDDY | UDS_ARROWKEYS | UDS_NOTHOUSANDS, 0, 0, 10, 12
+    AUTOCHECKBOX    "&Remember zoom (Ctrl+wheel)", IDC_VIEW_REMEMBER_ZOOM, 112, 30, 190, 10
+
+    GROUPBOX        "Columns (pixels at 100% zoom)", -1, 4, 50, 308, 76
+    AUTOCHECKBOX    "&Auto-size columns to fit their content", IDC_VIEW_AUTOSIZE, 12, 63, 200, 10
+    LTEXT           "Auto-size &limit:", -1, 12, 79, 70, 9
+    EDITTEXT        IDC_VIEW_MAXAUTO, 84, 77, 36, 12, ES_NUMBER
+    LTEXT           "Fully-fit li&mit:", -1, 160, 79, 70, 9
+    EDITTEXT        IDC_VIEW_MAXFIT, 232, 77, 36, 12, ES_NUMBER
+    LTEXT           "M&inimum width:", -1, 12, 95, 70, 9
+    EDITTEXT        IDC_VIEW_MINW, 84, 93, 36, 12, ES_NUMBER
+    LTEXT           "Defa&ult width:", -1, 160, 95, 70, 9
+    EDITTEXT        IDC_VIEW_DEFW, 232, 93, 36, 12, ES_NUMBER
+    LTEXT           "Last colum&n:", -1, 12, 111, 70, 9
+    COMBOBOX        IDC_VIEW_LASTCOL, 84, 109, 120, 80, CBS_DROPDOWNLIST | WS_VSCROLL | WS_TABSTOP
+
+    GROUPBOX        "Display", -1, 4, 130, 308, 78
+    AUTOCHECKBOX    "Show line &breaks in cells (multi-line rows)", IDC_VIEW_MULTILINE, 12, 143, 170, 10
+    LTEXT           "Max lines:", -1, 192, 144, 40, 9
+    EDITTEXT        IDC_VIEW_MAXLINES, 234, 142, 30, 12, ES_NUMBER
+    CONTROL         "", IDC_VIEW_MAXLINES_SPIN, "msctls_updown32",
+                    UDS_SETBUDDYINT | UDS_ALIGNRIGHT | UDS_AUTOBUDDY | UDS_ARROWKEYS | UDS_NOTHOUSANDS, 0, 0, 10, 12
+    AUTOCHECKBOX    "Row num&bers", IDC_VIEW_ROWNUM, 12, 159, 140, 10
+    AUTOCHECKBOX    "Free&ze first column", IDC_VIEW_FREEZE, 160, 159, 140, 10
+    AUTOCHECKBOX    "&Status bar", IDC_VIEW_STATUS, 12, 174, 140, 10
+    AUTOCHECKBOX    "Zebra ro&ws", IDC_VIEW_ZEBRA, 160, 174, 140, 10
+    AUTOCHECKBOX    "Right-align &numbers", IDC_VIEW_ALIGN, 12, 189, 140, 10
+END
+
+IDD_PAGE_COLORS DIALOGEX 0, 0, 316, 212
+STYLE DS_SHELLFONT | DS_CONTROL | WS_CHILD
+FONT 9, "MS Shell Dlg 2", 400, 0, 1
+BEGIN
+    LTEXT           "&Theme:", -1, 4, 6, 40, 9
+    COMBOBOX        IDC_COL_THEME, 46, 4, 90, 60, CBS_DROPDOWNLIST | WS_VSCROLL | WS_TABSTOP
+    LTEXT           "(auto follows Total Commander's dark mode)", -1, 142, 6, 170, 9
+    LTEXT           "Edit palette:", -1, 4, 24, 44, 9
+    AUTORADIOBUTTON "&Light", IDC_COL_LIGHT, 50, 23, 40, 10, WS_GROUP | WS_TABSTOP
+    AUTORADIOBUTTON "&Dark", IDC_COL_DARK, 94, 23, 40, 10
+    LISTBOX         IDC_COL_LIST, 4, 38, 200, 170,
+                    LBS_OWNERDRAWFIXED | LBS_NOTIFY | LBS_NOINTEGRALHEIGHT | WS_VSCROLL | WS_BORDER | WS_TABSTOP | WS_GROUP
+    PUSHBUTTON      "&Change...", IDC_COL_CHANGE, 210, 38, 102, 14
+    PUSHBUTTON      "&Reset to built-in", IDC_COL_RESET, 210, 56, 102, 14
+    PUSHBUTTON      "Reset &all (this palette)", IDC_COL_RESET_ALL, 210, 74, 102, 14
+    LTEXT           "", IDC_COL_STATE, 210, 96, 102, 40, SS_NOPREFIX
+END
+
+VS_VERSION_INFO VERSIONINFO
+ FILEVERSION TCL_VER_MAJOR,TCL_VER_MINOR,TCL_VER_PATCH,0
+ PRODUCTVERSION TCL_VER_MAJOR,TCL_VER_MINOR,TCL_VER_PATCH,0
+ FILEFLAGSMASK 0x3fL
+ FILEFLAGS 0x0L
+ FILEOS VOS_NT_WINDOWS32
+ FILETYPE VFT_DLL
+ FILESUBTYPE 0x0L
+BEGIN
+    BLOCK "StringFileInfo"
+    BEGIN
+        BLOCK "040904b0"
+        BEGIN
+            VALUE "FileDescription", "Total Commander Lister CSV/TSV table viewer"
+            VALUE "FileVersion", TCL_VER_STRING
+            VALUE "InternalName", "tcl-csvvw"
+            VALUE "OriginalFilename", "tcl-csvvw.wlx64"
+            VALUE "ProductName", "tcl-csvvw"
+            VALUE "ProductVersion", TCL_VER_STRING
+        END
+    END
+    BLOCK "VarFileInfo"
+    BEGIN
+        VALUE "Translation", 0x409, 1200
+    END
+END

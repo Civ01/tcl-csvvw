@@ -1,0 +1,5 @@
+[plugininstall]
+description=CSV/TSV table viewer
+type=wlx
+file=tcl-csvvw.wlx
+defaultdir=tcl-csvvw

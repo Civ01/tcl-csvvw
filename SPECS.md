@@ -175,7 +175,7 @@ RFC 4180 plus common real-world variants:
 
 ### 5.6 Header detection
 
-The heuristic runs on row 1 against a sample of up to 200 following rows:
+The heuristic compares row 1 with the column statistics of all following rows (collected in the load pass anyway):
 
 - **Header = yes (definitive)** when all of these hold:
   - Every non-empty cell in row 1 is non-numeric and non-date.
@@ -217,7 +217,7 @@ With a header, row 1 becomes the column header captions and is excluded from sor
 - Each cell is clipped to its rectangle.
 - One `HFONT` per zoom level (plus a bold variant for the header).
 - The text of visible cells is converted from UTF-8 to UTF-16 through the row cache.
-- **Line break glyph (all modes):** a line break that is part of a cell's own text (CRLF, LF or CR inside a quoted field) is **always** drawn as a dim `↵`. In multi-line mode, and wherever text wraps, the `↵` is drawn at the end of the line it ends. This tells the cell's own breaks apart from soft wraps (§6.3.1), which get no glyph. Tabs are drawn as a space.
+- **Line break glyph (all modes):** a line break that is part of a cell's own text (CRLF, LF or CR inside a quoted field) is **always** drawn as a dim `↵`. In multi-line mode, and wherever text wraps, the `↵` is drawn at the end of the line it ends. This tells the cell's own breaks apart from soft wraps (§6.3.1), which get no glyph. If the table font has no `↵` glyph, `¶` is used instead. Tabs are drawn as a space.
 - **Single-line mode** (default):
   - The row height is fixed at the font height plus padding, except for rows grown by last-column wrapping (§6.3.1).
   - A cell's lines are drawn inline: `first↵second↵third`.
@@ -518,7 +518,8 @@ CMakeLists.txt  SPECS.md  README.md
 cmake/mingw-w64-x86_64.cmake
 src/
   core/    Config, Settings, OptionSchema, IniDocument, TextDecoder, TextUtil
-  csv/     Loader, Sniffer, RowIndex, ColumnStats, Table, SortEngine, Search, Clipboard, ValueParse
+  csv/     Parser (row index, field split), Table (loader, sniffer, column stats, header detection),
+           ValueParse, Ops (sort, search, clipboard), TextLayout (display transforms, word wrap)
   plugin/  exports.cpp, listplug.h, tcl-csvvw.def, WinUtil, DebugLog
   view/    ListerWindow, GridView, StatusBar, InfoBar
   ui/      ContextMenu, ConfigDialog, ConfigPages, DarkMode, resources.rc, version.h.in
@@ -565,7 +566,20 @@ tools/     plugin_smoke.cpp
 
 ---
 
-## 19. Open questions / assumptions
+## 19. Implementation notes (v1 as built)
+
+- **Portable core:** everything below the window layer is plain C++20 and unit-tested on Linux (ASan/UBSan) and Windows. Locale-aware parts are injected: `LCMapStringEx(LCMAP_SORTKEY | LINGUISTIC_IGNORECASE | SORT_DIGITSASNUMBERS)` sort keys and `FindNLSStringEx` case-insensitive search. An ASCII needle in an ASCII cell skips the NLS call. The portable fallbacks are ASCII case folding and natural digit order.
+- **Sort keys** are built once per sort (binary keys, `memcmp` order), so the comparator never calls into the locale.
+- **Text drawing** passes the measured advances (`GetTextExtentExPointW`) to `ExtTextOutW`, so the search highlight, the `…` and the glyph runs line up exactly with the text.
+- **Row cache:** the decoded UTF-16 text of up to 4096 rows. It is cleared when full.
+- **Scroll bars** always show, disabled when not needed (`SIF_DISABLENOSCROLL`). This keeps the client width stable, so wrap mode cannot oscillate between widths.
+- **Fixed-height rows** use row units on the vertical scroll bar. Variable-height rows (multi-line or wrap) use pixels.
+- **Smoke test:** `tools/plugin_smoke` runs on `windows-latest` in CI, and locally under Wine + Xvfb. `CSVVW_SMOKE_SHOTS=<dir>` writes screenshots of each mode.
+- **Debug log:** `debug_log=true` writes `tcl-csvvw.log` (load, parse time, window creation failures).
+
+---
+
+## 20. Open questions / assumptions
 
 1. **The cell is the smallest selection unit.** Partial text selection inside a cell is out of scope for v1. If needed later: a read-only edit overlay on double-click.
 2. **Oversized files** are claimed with a notice rather than returning `NULL`, so the reason is visible. An alternative is `oversize_action=decline`.

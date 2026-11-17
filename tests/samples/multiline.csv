@@ -1,0 +1,9 @@
+id,name,notes
+1,"Alpha","first line
+second line"
+2,"Beta ""quoted""","single"
+3,"Gamma, with comma","a
+b
+c
+d"
+4,Delta,"very long text that should wrap when the last column is in wrap mode because it is quite a bit longer than the default auto width limit. It keeps going for a while so that even a wide Lister window has to wrap it onto several lines: lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua."
