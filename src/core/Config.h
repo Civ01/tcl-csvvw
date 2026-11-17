@@ -40,6 +40,8 @@ struct Config {
     EncodingChoice encoding = EncodingChoice::Auto;
     csv::HeaderMode headerMode = csv::HeaderMode::Auto;
     bool headerDefault = true;
+    int typeThreshold = 90;        // % numeric/date cells for a typed column (sorting, alignment)
+    int headerTypeThreshold = 75;  // same, for header detection
 
     std::string fontFace = "Segoe UI";
     int fontSize = 10;
@@ -55,6 +57,7 @@ struct Config {
 
     bool multilineCells = false;
     int maxCellLines = 8;
+    std::u16string linebreakFallback = u"\u00B6";  // drawn instead of the line-break glyph when the font lacks it
     bool showRowNumbers = true;
     bool freezeFirstColumn = false;
     bool showStatusBar = true;

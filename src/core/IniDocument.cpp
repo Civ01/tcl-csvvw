@@ -78,6 +78,7 @@ bool IniDocument::loadFile(const std::filesystem::path& p, IniDocument& out, con
     if (!readFileBytes(p, bytes)) return false;
     auto decoded = decodeText(bytes, ansi);
     out = parse(std::u16string_view(decoded.text));
+    out.encoding_ = decoded.encoding;
     return true;
 }
 
@@ -193,7 +194,21 @@ std::string IniDocument::serialize() const {
 bool IniDocument::saveFile(const std::filesystem::path& p) const {
     FILE* f = openFile(p, true);
     if (!f) return false;
-    auto s = serialize();
+    std::string s = serialize();
+    if (encoding_ == Encoding::Utf8Bom) {
+        s.insert(0, "\xEF\xBB\xBF");
+    } else if (encoding_ == Encoding::Utf16LE || encoding_ == Encoding::Utf16BE) {
+        const bool be = encoding_ == Encoding::Utf16BE;
+        std::u16string u = utf8ToUtf16(s);
+        std::string b = be ? std::string("\xFE\xFF", 2) : std::string("\xFF\xFE", 2);
+        b.reserve(2 + u.size() * 2);
+        for (char16_t c : u) {
+            char hi = static_cast<char>(c >> 8), lo = static_cast<char>(c & 0xFF);
+            b.push_back(be ? hi : lo);
+            b.push_back(be ? lo : hi);
+        }
+        s = std::move(b);
+    }
     bool ok = std::fwrite(s.data(), 1, s.size(), f) == s.size();
     ok = (std::fclose(f) == 0) && ok;
     return ok;

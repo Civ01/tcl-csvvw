@@ -144,7 +144,8 @@ void GridView::setTable(std::shared_ptr<csv::Table> table, const GridOptions& op
 void GridView::setOptions(const GridOptions& opt) {
     GridOptions old = opt_;
     opt_ = opt;
-    const bool fontChanged = old.fontFace != opt.fontFace || old.fontSize != opt.fontSize || old.zoom != opt.zoom;
+    const bool fontChanged = old.fontFace != opt.fontFace || old.fontSize != opt.fontSize || old.zoom != opt.zoom ||
+                             old.linebreakFallback != opt.linebreakFallback;
     const bool measureChanged = fontChanged || old.autoSize != opt.autoSize || old.multiline != opt.multiline ||
                                 old.maxAutoWidth != opt.maxAutoWidth || old.minColumnWidth != opt.minColumnWidth ||
                                 old.defaultColumnWidth != opt.defaultColumnWidth ||
@@ -250,7 +251,7 @@ void GridView::computeMetrics() {
     const wchar_t lb = csv::kLineBreakGlyph;
     breakGlyph_ = (GetGlyphIndicesW(measureDc_, &lb, 1, &glyph, GGI_MARK_NONEXISTING_GLYPHS) == GDI_ERROR ||
                    glyph == 0xFFFF)
-                      ? u'\u00B6'
+                      ? opt_.linebreakFallback
                       : csv::kLineBreakGlyph;
     SelectObject(measureDc_, bold_);
     TEXTMETRICW tb{};

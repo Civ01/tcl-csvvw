@@ -31,6 +31,8 @@ struct LoadOptions {
     HeaderMode headerMode = HeaderMode::Auto;
     bool headerDefault = true;  // used when detection is inconclusive
     bool preferTab = false;     // .tsv / .tab: Tab wins delimiter ties
+    int typeThreshold = 90;     // % of non-empty cells that make a column number/date (sorting, alignment)
+    int headerThreshold = 75;   // same, for header detection only
 };
 
 struct ColumnStats {
@@ -61,6 +63,7 @@ public:
     std::vector<ColumnStats> stats;
     HeaderDetect headerDetect = HeaderDetect::Inconclusive;
     bool header = false;
+    int typeThreshold = 90;  // percent, see LoadOptions
 
     size_t fileRows() const { return rowStarts.empty() ? 0 : rowStarts.size() - 1; }
     size_t headerRows() const { return header && fileRows() > 0 ? 1 : 0; }
@@ -82,7 +85,9 @@ public:
     std::string caption(size_t col) const;
 };
 
-HeaderDetect detectHeader(const Table& t);
+// Typed (number/date) or Text for a column's statistics at `thresholdPct`.
+ValueKind typedKind(uint32_t nonEmpty, uint32_t numbers, uint32_t dates, int thresholdPct);
+HeaderDetect detectHeader(const Table& t, int thresholdPct = 75);
 char sniffDelimiter(std::string_view data, bool preferTab);
 
 // Decodes, sniffs, indexes and computes statistics. Never throws on bad

@@ -13,8 +13,13 @@ TEST_CASE("sample: UE_cvars.csv (Unreal Engine console variables dump)") {
     CHECK(t->delimiter == ',');
     CHECK(t->fileRows() == 7035);
     CHECK(t->columns == 18);  // ragged: unquoted commas inside some values
-    CHECK(t->header);         // all-text table: header_default
-    CHECK(t->headerDetect == HeaderDetect::Inconclusive);
+    CHECK(t->header);
+    CHECK(t->headerDetect == HeaderDetect::Yes);  // VALUE is ~83% numeric: above the 75% header threshold
+    {
+        LoadOptions strict;
+        strict.headerThreshold = 90;
+        CHECK(loadTable(readSample("UE_cvars.csv"), strict)->headerDetect == HeaderDetect::Inconclusive);
+    }
     CHECK(t->caption(0) == "NAME");
     CHECK(t->caption(2) == "SETBY");
     CHECK(t->cell(1, 0) == "a.AnimNode.AimOffsetLookAt.Debug");

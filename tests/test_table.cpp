@@ -71,6 +71,18 @@ TEST_CASE("header detection") {
         o.headerMode = HeaderMode::On;
         CHECK(load("1,2\n3,4\n", o)->header);
     }
+    SUBCASE("thresholds") {
+        std::string s = "n,v\nr,1\nr,2\nr,3\nr,x\n";  // 75% numeric
+        LoadOptions o;
+        auto t = load(s, o);
+        CHECK(t->headerDetect == HeaderDetect::Yes);       // header threshold 75
+        CHECK(t->columnType(1) == ValueKind::Text);        // type threshold 90
+        o.typeThreshold = 75;
+        o.headerThreshold = 80;
+        t = load(s, o);
+        CHECK(t->columnType(1) == ValueKind::Number);
+        CHECK(t->headerDetect == HeaderDetect::Inconclusive);
+    }
     SUBCASE("90% rule") {
         std::string s = "n,v\n";
         for (int i = 0; i < 9; ++i) s += "r," + std::to_string(i) + "\n";

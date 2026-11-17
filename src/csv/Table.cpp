@@ -65,9 +65,14 @@ ValueKind Table::columnType(size_t col) const {
         if (s.row0Kind == ValueKind::Number) ++numbers;
         if (s.row0Kind == ValueKind::Date) ++dates;
     }
+    return typedKind(nonEmpty, numbers, dates, typeThreshold);
+}
+
+ValueKind typedKind(uint32_t nonEmpty, uint32_t numbers, uint32_t dates, int pct) {
     if (nonEmpty == 0) return ValueKind::Text;
-    if (numbers * 10ull >= nonEmpty * 9ull) return ValueKind::Number;
-    if (dates * 10ull >= nonEmpty * 9ull) return ValueKind::Date;
+    const uint64_t need = static_cast<uint64_t>(nonEmpty) * static_cast<uint64_t>(pct);
+    if (numbers * 100ull >= need) return ValueKind::Number;
+    if (dates * 100ull >= need) return ValueKind::Date;
     return ValueKind::Text;
 }
 
@@ -137,16 +142,14 @@ char sniffDelimiter(std::string_view data, bool preferTab) {
     return best;
 }
 
-HeaderDetect detectHeader(const Table& t) {
+HeaderDetect detectHeader(const Table& t, int pct) {
     if (t.fileRows() < 2 || t.stats.empty()) return HeaderDetect::Inconclusive;
     bool anyRow0 = false, allRow0Text = true, typedMismatch = false;
     for (const auto& s : t.stats) {
         if (s.row0Kind != ValueKind::Empty) anyRow0 = true;
         if (s.row0Kind == ValueKind::Number || s.row0Kind == ValueKind::Date) allRow0Text = false;
         if (s.nonEmpty == 0) continue;
-        ValueKind typed = ValueKind::Text;
-        if (s.numbers * 10ull >= s.nonEmpty * 9ull) typed = ValueKind::Number;
-        else if (s.dates * 10ull >= s.nonEmpty * 9ull) typed = ValueKind::Date;
+        ValueKind typed = typedKind(s.nonEmpty, s.numbers, s.dates, pct);
         if (typed == ValueKind::Text) continue;
         if (s.row0Kind == typed) return HeaderDetect::No;  // row 0 looks like data
         if (s.row0Kind != ValueKind::Empty) typedMismatch = true;
@@ -260,7 +263,8 @@ std::unique_ptr<Table> loadTable(std::string&& bytes, const LoadOptions& opt, co
     for (size_t r = 0; r < rows; ++r)
         t->lastCellLines[r] = fieldCount[r] == t->columns ? rowLastLines[r] : 1;
 
-    t->headerDetect = detectHeader(*t);
+    t->typeThreshold = std::clamp(opt.typeThreshold, 1, 100);
+    t->headerDetect = detectHeader(*t, std::clamp(opt.headerThreshold, 1, 100));
     switch (opt.headerMode) {
         case HeaderMode::On: t->header = true; break;
         case HeaderMode::Off: t->header = false; break;

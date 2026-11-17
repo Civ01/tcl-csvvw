@@ -42,8 +42,13 @@ public:
     // belonging to it included) up to the next section header.
     bool removeSection(std::string_view section);
 
-    std::string serialize() const;  // CRLF line endings
+    std::string serialize() const;  // UTF-8, CRLF line endings
+    // Writes in the encoding the file was loaded with (UTF-8 with/without BOM,
+    // UTF-16 LE/BE with BOM). ANSI files are written as UTF-8 (still readable:
+    // valid UTF-8 is detected first).
     bool saveFile(const std::filesystem::path& p) const;
+    Encoding encoding() const { return encoding_; }
+    void setEncoding(Encoding e) { encoding_ = e; }
 
 private:
     enum class LineType { Blank, Comment, Section, KeyValue, Other };
@@ -55,6 +60,7 @@ private:
         std::string value;
     };
     std::vector<Line> lines_;
+    Encoding encoding_ = Encoding::Utf8;
 };
 
 bool readFileBytes(const std::filesystem::path& p, std::string& out);

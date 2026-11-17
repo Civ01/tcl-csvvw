@@ -83,6 +83,7 @@ std::wstring checkOption(const char* key, const std::string& text) {
     if (o && o->type == OptionType::Int)
         return label + L" must be a number between " + std::to_wstring(o->minValue) + L" and " +
                std::to_wstring(o->maxValue) + L".";
+    if (o && o->type == OptionType::Char) return label + L" must be a single character.";
     if (o && o->type == OptionType::Size)
         return label + L" must be a size such as 100M, 512K or 1000000 (between " +
                win::widen(formatSizeSpec(static_cast<uint64_t>(o->minValue))) + L" and " +
@@ -112,6 +113,8 @@ public:
         comboSelect(item(IDC_GEN_ENCODING), win::widen(getGeneralValue(c, "encoding")));
         comboSelect(item(IDC_GEN_HEADER_MODE), win::widen(getGeneralValue(c, "header_mode")));
         setChecked(item(IDC_GEN_HEADER_DEFAULT), c.headerDefault);
+        setText(item(IDC_GEN_TYPE_THRESHOLD), std::to_string(c.typeThreshold));
+        setText(item(IDC_GEN_HEADER_THRESHOLD), std::to_string(c.headerTypeThreshold));
         setChecked(item(IDC_GEN_DEBUGLOG), c.debugLog);
         loading_ = false;
         updateDetect();
@@ -120,7 +123,8 @@ public:
     HWND validate(std::wstring& err) override {
         struct F { int id; const char* key; };
         for (F f : {F{IDC_GEN_EXTS, "extensions"}, F{IDC_GEN_MAXSIZE, "max_file_size"},
-                    F{IDC_GEN_MAXCELL, "max_cell_chars"}}) {
+                    F{IDC_GEN_MAXCELL, "max_cell_chars"}, F{IDC_GEN_TYPE_THRESHOLD, "type_threshold"},
+                    F{IDC_GEN_HEADER_THRESHOLD, "header_type_threshold"}}) {
             err = checkOption(f.key, getTextUtf8(item(f.id)));
             if (!err.empty()) return item(f.id);
         }
@@ -135,6 +139,8 @@ public:
         setGeneralValue(c, "encoding", win::narrow(comboText(item(IDC_GEN_ENCODING))));
         setGeneralValue(c, "header_mode", win::narrow(comboText(item(IDC_GEN_HEADER_MODE))));
         c.headerDefault = checked(item(IDC_GEN_HEADER_DEFAULT));
+        setGeneralValue(c, "type_threshold", getTextUtf8(item(IDC_GEN_TYPE_THRESHOLD)));
+        setGeneralValue(c, "header_type_threshold", getTextUtf8(item(IDC_GEN_HEADER_THRESHOLD)));
         c.debugLog = checked(item(IDC_GEN_DEBUGLOG));
     }
 
@@ -203,6 +209,7 @@ public:
         setChecked(item(IDC_VIEW_STATUS), c.showStatusBar);
         setChecked(item(IDC_VIEW_ZEBRA), c.zebraRows);
         setChecked(item(IDC_VIEW_ALIGN), c.alignNumbersRight);
+        setText(item(IDC_VIEW_LBFALLBACK), getGeneralValue(c, "linebreak_fallback"));
     }
 
     HWND validate(std::wstring& err) override {
@@ -210,7 +217,7 @@ public:
         for (F f : {F{IDC_VIEW_FONT, "font_face"}, F{IDC_VIEW_FONTSIZE, "font_size"}, F{IDC_VIEW_ZOOM, "zoom"},
                     F{IDC_VIEW_MAXAUTO, "max_auto_width"}, F{IDC_VIEW_MINW, "min_column_width"},
                     F{IDC_VIEW_DEFW, "default_column_width"}, F{IDC_VIEW_MAXFIT, "max_fit_width"},
-                    F{IDC_VIEW_MAXLINES, "max_cell_lines"}}) {
+                    F{IDC_VIEW_MAXLINES, "max_cell_lines"}, F{IDC_VIEW_LBFALLBACK, "linebreak_fallback"}}) {
             err = checkOption(f.key, getTextUtf8(item(f.id)));
             if (!err.empty()) return item(f.id);
         }
@@ -235,6 +242,7 @@ public:
         c.showStatusBar = checked(item(IDC_VIEW_STATUS));
         c.zebraRows = checked(item(IDC_VIEW_ZEBRA));
         c.alignNumbersRight = checked(item(IDC_VIEW_ALIGN));
+        setGeneralValue(c, "linebreak_fallback", getTextUtf8(item(IDC_VIEW_LBFALLBACK)));
     }
 
 private:

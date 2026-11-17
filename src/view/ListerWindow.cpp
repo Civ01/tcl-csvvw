@@ -225,6 +225,7 @@ GridOptions ListerWindow::gridOptions() const {
     o.zebra = cfg_.zebraRows;
     o.alignNumbersRight = cfg_.alignNumbersRight;
     o.maxCellChars = static_cast<size_t>(cfg_.maxCellChars);
+    o.linebreakFallback = cfg_.linebreakFallback.empty() ? u'\u00B6' : cfg_.linebreakFallback[0];
     bool dark = cfg_.useDark(dark_);
     o.colors = cfg_.palette(dark);
     o.dark = dark;
@@ -255,6 +256,8 @@ bool ListerWindow::loadInternal(const std::wstring& file, int showFlags, bool sa
         lo.headerMode = headerOverride_ ? (*headerOverride_ ? csv::HeaderMode::On : csv::HeaderMode::Off)
                                         : cfg.headerMode;
         lo.headerDefault = cfg.headerDefault;
+        lo.typeThreshold = cfg.typeThreshold;
+        lo.headerThreshold = cfg.headerTypeThreshold;
         auto ext = toLowerAscii(pathToUtf8(fs::path(file).extension()));
         lo.preferTab = ext == ".tsv" || ext == ".tab";
         DWORD t0 = GetTickCount();

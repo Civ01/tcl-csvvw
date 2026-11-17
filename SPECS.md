@@ -5,7 +5,7 @@ A Total Commander Lister plugin (64-bit) that shows CSV/TSV files as a fast, rea
 - **Status:** v1 spec, drafted from the requirements interview on 2026-11-17
 - **Repo:** https://github.com/Civ01/tcl-csvvw
 - **Binary name:** `tcl-csvvw.wlx64`
-- **Size target:** < 300 KB (the current best third-party plugin is ~2 MB)
+- **Size target:** < 1 MB, with speed taking priority over size (decided 2026-11-17; v1 is ~525 KB with `/O2`). The current best third-party plugin is ~2 MB.
 - **Basis:** the plugin plumbing, settings framework, dark mode, build and CI are extracted from [tcl-syntaxhl](https://github.com/Civ01/tcl-syntaxhl). The view (RichEdit there) is replaced by a custom owner-drawn grid. No third-party CSV or grid library is used.
 
 ---
@@ -217,7 +217,7 @@ With a header, row 1 becomes the column header captions and is excluded from sor
 - Each cell is clipped to its rectangle.
 - One `HFONT` per zoom level (plus a bold variant for the header).
 - The text of visible cells is converted from UTF-8 to UTF-16 through the row cache.
-- **Line break glyph (all modes):** a line break that is part of a cell's own text (CRLF, LF or CR inside a quoted field) is **always** drawn as a dim `↵`. In multi-line mode, and wherever text wraps, the `↵` is drawn at the end of the line it ends. This tells the cell's own breaks apart from soft wraps (§6.3.1), which get no glyph. If the table font has no `↵` glyph, `¶` is used instead. Tabs are drawn as a space.
+- **Line break glyph (all modes):** a line break that is part of a cell's own text (CRLF, LF or CR inside a quoted field) is **always** drawn as a dim `↵`. In multi-line mode, and wherever text wraps, the `↵` is drawn at the end of the line it ends. This tells the cell's own breaks apart from soft wraps (§6.3.1), which get no glyph. If the table font has no `↵` glyph, the `linebreak_fallback` character (default `¶`) is used instead. Tabs are drawn as a space.
 - **Single-line mode** (default):
   - The row height is fixed at the font height plus padding, except for rows grown by last-column wrapping (§6.3.1).
   - A cell's lines are drawn inline: `first↵second↵third`.
@@ -366,7 +366,7 @@ Types are worked out in the load pass, over all non-empty data cells:
 | **date** | ISO `YYYY-MM-DD` with an optional `[T ]hh:mm[:ss[.fff]]`; `DD.MM.YYYY` with an optional time. US `MM/DD/YYYY` is not recognised, because it is ambiguous. |
 | **text** | Anything else. |
 
-A column is number or date when ≥ 90% of its non-empty cells parse as that type; otherwise it is text.
+A column is number or date when at least `type_threshold` (default 90%) of its non-empty cells parse as that type; otherwise it is text. Header detection (§5.6) uses its own threshold, `header_type_threshold` (default 75%).
 
 ### 9.2 Behaviour
 
@@ -428,6 +428,8 @@ delimiter=auto                ; auto | , | ; | tab | pipe
 encoding=auto                 ; auto | utf8 | utf16le | utf16be | ansi
 header_mode=auto              ; auto | on | off
 header_default=true           ; used when auto detection is inconclusive (menu toggle writes this)
+type_threshold=90             ; % of non-empty cells that make a column number/date (sorting, alignment)
+header_type_threshold=75      ; the same, for header detection only
 
 font_face=Segoe UI
 font_size=10
@@ -444,6 +446,7 @@ last_column=normal            ; normal | fit | wrap  (right-click > Last column)
 
 multiline_cells=false
 max_cell_lines=8              ; also limits wrapped lines in the last column
+linebreak_fallback=¶          ; drawn for a cell's own line breaks when the font has no ↵
 show_row_numbers=true
 freeze_first_column=false
 show_status_bar=true
@@ -457,6 +460,8 @@ debug_log=false
 ; background=#FFFFFF  ... (empty = built-in; keys listed in §6.5)
 [ColorsDark]
 ```
+
+**INI encoding:** UTF-8 (with or without BOM), UTF-16 LE/BE with BOM and ANSI are all read. Writes keep the file's encoding; an ANSI file is rewritten as UTF-8, which is still detected correctly. This matters for non-ASCII values such as `linebreak_fallback=¶`. The INI format has no inline comments, so `;` and `#` inside values are safe.
 
 **Settings window** (right-click → *Settings…*): the reused `ConfigDialog` with *OK / Cancel / Apply / Open INI file*. Pages are generated from `OptionSchema`:
 
@@ -570,6 +575,7 @@ tools/     plugin_smoke.cpp
 
 - **Portable core:** everything below the window layer is plain C++20 and unit-tested on Linux (ASan/UBSan) and Windows. Locale-aware parts are injected: `LCMapStringEx(LCMAP_SORTKEY | LINGUISTIC_IGNORECASE | SORT_DIGITSASNUMBERS)` sort keys and `FindNLSStringEx` case-insensitive search. An ASCII needle in an ASCII cell skips the NLS call. The portable fallbacks are ASCII case folding and natural digit order.
 - **Sort keys** are built once per sort (binary keys, `memcmp` order), so the comparator never calls into the locale.
+- **Text measuring** calls `GetTextExtentExPointW` with `lpnFit = NULL`. With a fit pointer and `nMaxExtent = 0`, Windows fills the extents only for the characters that "fit" (none), so all glyphs were drawn on one spot. Wine fills them all, which hid the bug. The smoke test now renders the grid through `WM_PRINTCLIENT` and checks that the text covers enough pixel columns.
 - **Text drawing** passes the measured advances (`GetTextExtentExPointW`) to `ExtTextOutW`, so the search highlight, the `…` and the glyph runs line up exactly with the text.
 - **Row cache:** the decoded UTF-16 text of up to 4096 rows. It is cleared when full.
 - **Scroll bars** always show, disabled when not needed (`SIF_DISABLENOSCROLL`). This keeps the client width stable, so wrap mode cannot oscillate between widths.

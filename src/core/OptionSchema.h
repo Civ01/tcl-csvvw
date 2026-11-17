@@ -14,7 +14,7 @@
 
 namespace csvvw {
 
-enum class OptionType { Bool, Int, Size, Enum, Font, List };
+enum class OptionType { Bool, Int, Size, Enum, Font, List, Char };
 
 struct OptionDef {
     const char* key;

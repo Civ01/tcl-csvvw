@@ -36,7 +36,7 @@ BEGIN
     EDITTEXT        IDC_GEN_MAXCELL, 100, 80, 50, 12, ES_AUTOHSCROLL
     LTEXT           "(drawn / measured; search and copy use full text)", -1, 156, 82, 150, 9
 
-    GROUPBOX        "Parsing defaults (the right-click menu overrides them per file)", -1, 4, 98, 308, 84
+    GROUPBOX        "Parsing defaults (the right-click menu overrides them per file)", -1, 4, 98, 308, 98
     LTEXT           "&Delimiter:", -1, 12, 112, 86, 9
     COMBOBOX        IDC_GEN_DELIM, 100, 110, 80, 80, CBS_DROPDOWNLIST | WS_VSCROLL | WS_TABSTOP
     LTEXT           "E&ncoding:", -1, 12, 128, 86, 9
@@ -45,8 +45,12 @@ BEGIN
     COMBOBOX        IDC_GEN_HEADER_MODE, 100, 142, 80, 80, CBS_DROPDOWNLIST | WS_VSCROLL | WS_TABSTOP
     AUTOCHECKBOX    "&Treat the first row as header when detection is inconclusive", IDC_GEN_HEADER_DEFAULT,
                     12, 160, 292, 10
+    LTEXT           "Typed column at (%):", -1, 12, 177, 86, 9
+    EDITTEXT        IDC_GEN_TYPE_THRESHOLD, 100, 175, 30, 12, ES_NUMBER
+    LTEXT           "Header detection at (%):", -1, 150, 177, 100, 9
+    EDITTEXT        IDC_GEN_HEADER_THRESHOLD, 252, 175, 30, 12, ES_NUMBER
 
-    AUTOCHECKBOX    "Write debu&g log (tcl-csvvw.log, troubleshooting only)", IDC_GEN_DEBUGLOG, 12, 192, 292, 10
+    AUTOCHECKBOX    "Write debu&g log (tcl-csvvw.log, troubleshooting only)", IDC_GEN_DEBUGLOG, 12, 200, 292, 10
 END
 
 IDD_PAGE_VIEW DIALOGEX 0, 0, 316, 212
@@ -90,6 +94,8 @@ BEGIN
     AUTOCHECKBOX    "&Status bar", IDC_VIEW_STATUS, 12, 174, 140, 10
     AUTOCHECKBOX    "Zebra ro&ws", IDC_VIEW_ZEBRA, 160, 174, 140, 10
     AUTOCHECKBOX    "Right-align &numbers", IDC_VIEW_ALIGN, 12, 189, 140, 10
+    LTEXT           "Line break fallback:", -1, 160, 190, 74, 9
+    EDITTEXT        IDC_VIEW_LBFALLBACK, 236, 188, 24, 12, ES_AUTOHSCROLL
 END
 
 IDD_PAGE_COLORS DIALOGEX 0, 0, 316, 212

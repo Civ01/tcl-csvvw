@@ -34,6 +34,7 @@ struct GridOptions {
     int maxCellLines = 8;
     bool rowNumbers = true, freezeFirst = false, zebra = true, alignNumbersRight = true;
     size_t maxCellChars = 32768;
+    char16_t linebreakFallback = u'\u00B6';  // used when the font has no ↵
     Palette colors = builtinPalette(false);
     bool dark = false;
 };

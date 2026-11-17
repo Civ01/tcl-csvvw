@@ -103,3 +103,69 @@ TEST_CASE("dist ini parses with defaults") {
         CHECK(doc.get(kGeneral, o.key).has_value());  // every option is documented
     }
 }
+
+TEST_CASE("ini encodings: non-ASCII values and round trips") {
+    auto dir = fs::temp_directory_path() / "csvvw_test_ini_enc";
+    fs::create_directories(dir);
+    auto ini = dir / "e.ini";
+    const std::string body = "[General]\r\nlinebreak_fallback=\xE2\x8F\x8E\r\n";  // U+23CE
+    auto writeBytes = [&](const std::string& b) {
+        std::ofstream f(ini, std::ios::binary | std::ios::trunc);
+        f << b;
+    };
+    auto utf16 = [&](bool be) {
+        std::string b = be ? std::string("\xFE\xFF", 2) : std::string("\xFF\xFE", 2);
+        for (char16_t c : utf8ToUtf16(body)) {
+            char hi = static_cast<char>(c >> 8), lo = static_cast<char>(c & 0xFF);
+            b.push_back(be ? hi : lo);
+            b.push_back(be ? lo : hi);
+        }
+        return b;
+    };
+    struct Case {
+        const char* name;
+        std::string bytes;
+        Encoding enc;
+    };
+    for (const Case& c : {Case{"utf8", body, Encoding::Utf8}, Case{"utf8bom", "\xEF\xBB\xBF" + body, Encoding::Utf8Bom},
+                          Case{"utf16le", utf16(false), Encoding::Utf16LE},
+                          Case{"utf16be", utf16(true), Encoding::Utf16BE}}) {
+        INFO(c.name);
+        writeBytes(c.bytes);
+        Settings s;
+        REQUIRE(s.load(ini));
+        CHECK(s.document().encoding() == c.enc);
+        CHECK(s.config().linebreakFallback == u"\u23CE");
+        REQUIRE(Settings::saveGeneralValue(ini, "zoom", "150"));
+        Settings again;
+        REQUIRE(again.load(ini));
+        CHECK(again.document().encoding() == c.enc);  // encoding kept
+        CHECK(again.config().zoom == 150);
+        CHECK(again.config().linebreakFallback == u"\u23CE");
+    }
+    // ANSI (cp1252 pilcrow 0xB6) reads through the converter, is rewritten as UTF-8
+    writeBytes("[General]\r\nlinebreak_fallback=\xB6\r\n");
+    Settings a;
+    REQUIRE(a.load(ini));
+    CHECK(a.config().linebreakFallback == u"\u00B6");  // Latin-1 fallback converter
+    REQUIRE(Settings::saveGeneralValue(ini, "zoom", "120"));
+    Settings b;
+    REQUIRE(b.load(ini));
+    CHECK(b.document().encoding() == Encoding::Utf8);
+    CHECK(b.config().linebreakFallback == u"\u00B6");
+    // invalid fallback values keep the default
+    Config c;
+    CHECK_FALSE(setGeneralValue(c, "linebreak_fallback", "ab"));
+    CHECK_FALSE(setGeneralValue(c, "linebreak_fallback", ""));
+    CHECK(setGeneralValue(c, "linebreak_fallback", "|"));
+    fs::remove_all(dir);
+}
+
+TEST_CASE("thresholds are options") {
+    Config c;
+    CHECK(c.typeThreshold == 90);
+    CHECK(c.headerTypeThreshold == 75);
+    CHECK(setGeneralValue(c, "header_type_threshold", "60"));
+    CHECK(c.headerTypeThreshold == 60);
+    CHECK_FALSE(setGeneralValue(c, "type_threshold", "40"));
+}

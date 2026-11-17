@@ -46,7 +46,7 @@ Right-click the table for: delimiter and encoding overrides (current file), *Fir
 
 ## Configuration
 
-Everything is in `tcl-csvvw.ini` (fully commented) or in the settings window (right-click →
+Everything is in `tcl-csvvw.ini` (fully commented; UTF-8, UTF-16 with BOM or ANSI, and the encoding is kept on save) or in the settings window (right-click →
 *Settings…*). Highlights:
 
 | Key | Default | Meaning |
@@ -56,12 +56,14 @@ Everything is in `tcl-csvvw.ini` (fully commented) or in the settings window (ri
 | `max_cell_chars` | `32K` | Characters drawn per cell (search and copy use the full text) |
 | `delimiter` / `encoding` | `auto` | Defaults; the right-click menu overrides them per file |
 | `header_mode` / `header_default` | `auto` / `true` | Header detection; the default applies when detection is inconclusive |
+| `type_threshold` / `header_type_threshold` | `90` / `75` | % of a column's cells that must be numbers/dates to sort as such / to detect a header |
 | `font_face` / `font_size` | `Segoe UI` / `10` | Table font |
 | `zoom` / `remember_zoom` | `100` / `true` | Start zoom; with remember_zoom the last zoom is saved |
 | `auto_size_columns`, `max_auto_width` | `true`, `400` | Fit columns to content, up to the limit (px at 100%) |
 | `max_fit_width` | `4000` | Limit for fully-fit last column / divider double-click |
 | `last_column` | `normal` | `fit` = as wide as its widest cell, `wrap` = wrap long text, filling the window |
 | `multiline_cells`, `max_cell_lines` | `false`, `8` | Show a cell's own line breaks as separate lines |
+| `linebreak_fallback` | `¶` | Drawn for line breaks when the font has no `↵` glyph |
 | `theme` | `auto` | `auto` follows Total Commander's dark mode; colors can be overridden in `[ColorsLight]` / `[ColorsDark]` |
 
 ### Changing file extensions

@@ -162,6 +162,9 @@ std::vector<OptionDef> buildOptions() {
     }
     o.push_back(enumOpt<csv::HeaderMode>("header_mode", "First row is header", CSVVW_REF(csv::HeaderMode, headerMode), &kHeaderModes));
     o.push_back(boolOpt("header_default", "Header when detection is inconclusive", CSVVW_REF(bool, headerDefault)));
+    o.push_back(intOpt("type_threshold", "Typed column threshold (%)", CSVVW_REF(int, typeThreshold), 50, 100));
+    o.push_back(intOpt("header_type_threshold", "Header detection threshold (%)", CSVVW_REF(int, headerTypeThreshold),
+                       50, 100));
     {
         OptionDef d{"font_face", OptionType::Font, "Font", "Segoe UI"};
         d.get = [](const Config& c) { return c.fontFace; };
@@ -184,6 +187,17 @@ std::vector<OptionDef> buildOptions() {
     o.push_back(enumOpt<LastColumnMode>("last_column", "Last column", CSVVW_REF(LastColumnMode, lastColumn), &kLastColumn));
     o.push_back(boolOpt("multiline_cells", "Show line breaks in cells", CSVVW_REF(bool, multilineCells)));
     o.push_back(intOpt("max_cell_lines", "Maximum lines per cell", CSVVW_REF(int, maxCellLines), 1, 100));
+    {
+        OptionDef d{"linebreak_fallback", OptionType::Char, "Line break fallback glyph", "\xC2\xB6"};
+        d.get = [](const Config& c) { return utf16ToUtf8(c.linebreakFallback); };
+        d.set = [](Config& c, std::string_view v) {
+            auto u = utf8ToUtf16(trim(v));
+            if (u.size() != 1 || u[0] < 0x20 || (u[0] >= 0xD800 && u[0] <= 0xDFFF) || u[0] == 0xFFFD) return false;
+            c.linebreakFallback = u;
+            return true;
+        };
+        o.push_back(std::move(d));
+    }
     o.push_back(boolOpt("show_row_numbers", "Row numbers", CSVVW_REF(bool, showRowNumbers)));
     o.push_back(boolOpt("freeze_first_column", "Freeze first column", CSVVW_REF(bool, freezeFirstColumn)));
     o.push_back(boolOpt("show_status_bar", "Status bar", CSVVW_REF(bool, showStatusBar)));
