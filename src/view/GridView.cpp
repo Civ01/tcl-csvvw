@@ -582,8 +582,9 @@ void GridView::drawLineImpl(HDC dc, const RECT& rc, int y, const csv::DisplayLin
     if (n == 0 && !forceEllipsis) return;
     std::vector<int> dx(std::max<size_t>(n, 1));
     SIZE sz{};
-    int fitDummy = 0;
-    if (n) GetTextExtentExPointW(dc, W(line.text), static_cast<int>(n), 0, &fitDummy, dx.data(), &sz);
+    // lpnFit must be NULL: with a fit pointer Windows fills dx only for the
+    // characters that fit into nMaxExtent (none for 0), leaving zero advances.
+    if (n) GetTextExtentExPointW(dc, W(line.text), static_cast<int>(n), 0, nullptr, dx.data(), &sz);
     int total = n ? dx[n - 1] : 0;
     size_t drawN = n;
     bool ell = forceEllipsis || total > avail;
