@@ -217,15 +217,15 @@ With a header, row 1 becomes the column header captions and is excluded from sor
 - Each cell is clipped to its rectangle.
 - One `HFONT` per zoom level (plus a bold variant for the header).
 - The text of visible cells is converted from UTF-8 to UTF-16 through the row cache.
+- **Line break glyph (all modes):** a line break that is part of a cell's own text (CRLF, LF or CR inside a quoted field) is **always** drawn as a dim `↵`. In multi-line mode, and wherever text wraps, the `↵` is drawn at the end of the line it ends. This tells the cell's own breaks apart from soft wraps (§6.3.1), which get no glyph. Tabs are drawn as a space.
 - **Single-line mode** (default):
-  - The row height is fixed at the font height plus padding.
-  - Vertical scrolling is in whole rows.
-  - Line breaks inside a cell are drawn as a dim `↵`, and tabs as a space.
+  - The row height is fixed at the font height plus padding, except for rows grown by last-column wrapping (§6.3.1).
+  - A cell's lines are drawn inline: `first↵second↵third`.
   - Hovering a cell that contains line breaks or is truncated shows a tooltip with its text, capped.
 - **Multi-line mode** (right-click toggle **"Show line breaks in cells"**, saved as `multiline_cells`, default off):
+  - Each of a cell's own lines is drawn on its own visual line, ending with `↵`.
   - Row height = the most lines in any of the row's cells, capped at `max_cell_lines` (default 8), with `…` on overflow.
-  - Rows are positioned with a prefix-sum array, in display order, rebuilt on sort, zoom or toggle.
-  - Scrolling is pixel-based.
+- **Variable row heights:** once any row can be taller than one line (multi-line mode or last-column wrapping), rows are positioned with a prefix-sum array in display order. The array is rebuilt on sort, zoom, toggle and wrap-width changes, and scrolling becomes pixel-based. Otherwise the fast path applies: a fixed row height and whole-row scrolling.
 - **High DPI:** per-monitor DPI aware. All pixel settings are at 100% zoom and 96 DPI, and are scaled.
 
 ### 6.3 Columns and auto-size
@@ -235,9 +235,39 @@ With a header, row 1 becomes the column header captions and is excluded from sor
 - **Measuring cost:** `ColumnStats` keeps the 8 longest cells (by character count, capped) per column. Only those, plus the caption, are measured with `GetTextExtentPoint32W`. This is exact enough for proportional fonts and costs O(columns) per measure.
 - Widths are stored at zoom 100% and scaled proportionally on zoom, with no re-measuring.
 - When auto-size is off, columns get `default_column_width` (100 px).
-- **Manual resize:** dragging a header divider always works. Double-clicking a divider fits that column, ignoring the `max_auto_width` cap (spreadsheet behaviour).
+- **Manual resize:** dragging a header divider always works. Double-clicking a divider fits that column, ignoring the `max_auto_width` cap (spreadsheet behaviour) but not the hard limit `max_fit_width` (default **4000 px**).
 - Header right-click offers *Fit column* and *Fit all columns*.
 - Manual widths last for the current file only.
+
+#### 6.3.1 Last column mode
+
+Right-click → **Last column ▸** has two checkable items. They are mutually exclusive, and both may be off:
+
+| Item | INI (`last_column=`) | Behaviour |
+|---|---|---|
+| *(both off)* | `normal` (default) | The last column is sized like every other column: capped at `max_auto_width`, with `…`. |
+| **Fully-fit last column** | `fit` | The last column is as wide as its widest cell. It ignores `max_auto_width` but is limited by `max_fit_width` (4000 px). It applies whether or not auto-size is on. |
+| **Wrap text in last column** | `wrap` | Described below. |
+
+Checking one item unchecks the other; checking the active item again turns it off. The choice is saved to the INI immediately.
+
+**Wrap text in last column:**
+- **Wrap width** = max(the column's normal width, the free space from the column's left edge to the window's right edge). The normal width is its auto-size width capped at `max_auto_width`, or `default_column_width` or a manually dragged width.
+  - The column fills the window when there is room.
+  - Resizing the window re-wraps.
+  - When the content is narrower than the wrap width, the column takes its content width and nothing wraps.
+- **Wrapping:** word wrap at spaces and after `-` `/` `,` `;`. A single word longer than the wrap width is broken between characters.
+  - At most `max_cell_lines` visual lines (default 8); the last visible line ends with `…` when text is cut.
+  - The row height grows to fit, using the variable row height path (§6.2).
+- **A last-column cell that contains its own line breaks is never soft-wrapped.**
+  - In single-line mode it stays one line (`a↵b↵c`), truncated with `…` at the wrap width.
+  - In multi-line mode it is split only at its own breaks, and each line is truncated with `…`.
+- **Height computation:**
+  - A cell needs wrapping only if its width can exceed the wrap width. Cells that obviously fit, judged by character count × the font's maximum character width, cost nothing.
+  - The others are measured with `GetTextExtentExPointW`.
+  - Files with up to 200,000 rows are measured exactly when the mode is turned on, and on zoom, font or width changes.
+  - For larger files, heights start as estimates from the average character width and are corrected as rows are drawn. The top visible row stays anchored, so the view does not jump.
+- **Copy and search** are unaffected: they work on the cell text, not on the wrapped lines.
 
 ### 6.4 Font and zoom
 
@@ -359,7 +389,7 @@ A column is number or date when ≥ 90% of its non-empty cells parse as that typ
 **Grid:**
 - Copy · Copy as CSV · Copy with header · Select all
 - Delimiter ▸ (Auto · `,` · `;` · Tab · `|`) · Encoding ▸ (Auto · UTF-8 · UTF-16 LE · UTF-16 BE · ANSI)
-- ☐ First row is header · ☐ Show line breaks in cells · ☐ Auto-size columns · ☐ Row numbers · ☐ Freeze first column · ☐ Status bar
+- ☐ First row is header · ☐ Show line breaks in cells · ☐ Auto-size columns · Last column ▸ (☐ Fully-fit last column · ☐ Wrap text in last column; exclusive, both may be off, §6.3.1) · ☐ Row numbers · ☐ Freeze first column · ☐ Status bar
 - Restore original order · Reset zoom
 - Settings…
 
@@ -409,8 +439,11 @@ max_auto_width=400            ; px at 100% zoom
 min_column_width=40
 default_column_width=100      ; used when auto_size_columns=false
 
+max_fit_width=4000            ; hard limit for fully-fit / divider double-click (px at 100%)
+last_column=normal            ; normal | fit | wrap  (right-click > Last column)
+
 multiline_cells=false
-max_cell_lines=8
+max_cell_lines=8              ; also limits wrapped lines in the last column
 show_row_numbers=true
 freeze_first_column=false
 show_status_bar=true
@@ -428,7 +461,7 @@ debug_log=false
 **Settings window** (right-click → *Settings…*): the reused `ConfigDialog` with *OK / Cancel / Apply / Open INI file*. Pages are generated from `OptionSchema`:
 
 1. **General:** extensions (with a read-only detect string and *Copy*), max file size, max cell chars, delimiter, encoding, header mode and default.
-2. **View:** font face (dropdown of all installed fonts) and size, zoom and remember zoom, auto-size and widths, multi-line and max lines, row numbers, freeze, status bar, zebra, number alignment.
+2. **View:** font face (dropdown of all installed fonts) and size, zoom and remember zoom, auto-size and widths (including `max_fit_width`), last column mode, multi-line and max lines, row numbers, freeze, status bar, zebra, number alignment.
 3. **Colors:** theme, plus a list of color keys for light and dark with swatches, a `ChooseColor` picker and *Reset to built-in*.
 
 Apply reloads the current file and keeps the scroll position and current cell when possible.
@@ -467,6 +500,7 @@ The plugin_smoke test logs the timings. CI reports them but does not gate on the
 
 - **Core unit tests** (doctest, Linux and MSVC):
   - RFC 4180 corpus: quotes, `""`, embedded delimiters and newlines, CRLF/LF/CR, lenient cases, unterminated quote.
+  - Wrap layout (portable, with an injected width-measure callback): word and character breaks, the `max_cell_lines` cap, no soft wrap for cells with their own line breaks.
   - Ragged padding, BOMs and encodings, delimiter sniffing (including the `.tsv` tie-break), the header heuristic (definitive yes, no and inconclusive), type detection (number and date forms, 90% rule).
   - Comparators: empties last, stable order, the natural-text callback.
   - Search: flags, backwards, wrap stop.
@@ -504,7 +538,7 @@ tools/     plugin_smoke.cpp
 3. **Selection and clipboard:** mouse and keyboard selection, TSV, CSV and with-header copy, `lc_copy`/`lc_selectall`.
 4. **Sort:** header click cycle, comparators, *Sort as* override, stable permutation.
 5. **Search:** `ListSearchText` with all flags and the in-cell hit tint.
-6. **Menus and modes:** delimiter and encoding overrides, header toggle, multi-line mode, freeze first column, tooltips, the oversized notice.
+6. **Menus and modes:** delimiter and encoding overrides, header toggle, multi-line mode, last column mode (fit / wrap), variable row heights, freeze first column, tooltips, the oversized notice.
 7. **Settings window:** General, View and Colors pages, with dark mode.
 8. **Packaging:** README (including detect-string refresh), release zip, `pluginst.inf`, size check against the < 300 KB target.
 
@@ -523,6 +557,8 @@ tools/     plugin_smoke.cpp
 - [ ] Header click cycles asc → desc → original. Numbers, dates and text sort correctly, with empties last.
 - [ ] F7 / F3 / Shift+F3 find text with the case, whole-word and backwards options.
 - [ ] Row numbers, freeze first column, status bar and multi-line toggles work and persist.
+- [ ] The `↵` glyph shows for a cell's own line breaks in every mode.
+- [ ] *Fully-fit last column* and *Wrap text in last column* are exclusive and persist. Wrap fills to the window edge, re-wraps on resize, caps at `max_cell_lines`, and never soft-wraps a cell that has its own line breaks.
 - [ ] Dark mode follows TC. INI color overrides apply.
 - [ ] Lister hotkeys still work. Quick View does not steal focus. No beeps.
 - [ ] CI is green. The release zip is < 300 KB unpacked DLL size (target).
