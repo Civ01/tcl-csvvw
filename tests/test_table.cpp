@@ -1,5 +1,7 @@
 #include "TestUtil.h"
 
+#include <algorithm>
+
 using namespace csvvw;
 using namespace csvvw::csv;
 using csvvw::test::load;
