@@ -1506,6 +1506,11 @@ LRESULT GridView::handle(UINT msg, WPARAM wp, LPARAM lp) {
             return 0;
         }
         case WM_ERASEBKGND: return 1;
+        case WM_PRINTCLIENT: {  // render into a caller-supplied DC (tests, PrintWindow)
+            RECT rc{0, 0, clientW_, clientH_};
+            paint(reinterpret_cast<HDC>(wp), rc);
+            return 0;
+        }
         case WM_SIZE: {
             int w = LOWORD(lp), h = HIWORD(lp);
             bool widthChanged = w != clientW_;

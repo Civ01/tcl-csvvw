@@ -162,6 +162,47 @@ void shot(const char* name) {
     ReleaseDC(g_host, src);
 }
 
+// Renders the grid via WM_PRINTCLIENT and counts pixel columns that contain
+// dark ("ink") pixels. Catches text drawn with wrong glyph advances (all
+// characters stacked on one spot), independent of the screen.
+int inkColumns(HWND plugin) {
+    HWND g = grid(plugin);
+    RECT rc;
+    GetClientRect(g, &rc);
+    int w = rc.right, h = rc.bottom;
+    if (w <= 0 || h <= 0) return 0;
+    HDC screen = GetDC(nullptr);
+    HDC mem = CreateCompatibleDC(screen);
+    BITMAPINFO bi{};
+    bi.bmiHeader.biSize = sizeof bi.bmiHeader;
+    bi.bmiHeader.biWidth = w;
+    bi.bmiHeader.biHeight = -h;
+    bi.bmiHeader.biPlanes = 1;
+    bi.bmiHeader.biBitCount = 32;
+    void* bits = nullptr;
+    HBITMAP bmp = CreateDIBSection(screen, &bi, DIB_RGB_COLORS, &bits, nullptr, 0);
+    HGDIOBJ old = SelectObject(mem, bmp);
+    SendMessageW(g, WM_PRINTCLIENT, reinterpret_cast<WPARAM>(mem), PRF_CLIENT);
+    GdiFlush();
+    int count = 0;
+    const auto* px = static_cast<const uint32_t*>(bits);
+    for (int x = 0; x < w; ++x) {
+        for (int y = 0; y < h; ++y) {
+            uint32_t c = px[static_cast<size_t>(y) * w + x];
+            int r = (c >> 16) & 0xFF, gg = (c >> 8) & 0xFF, b = c & 0xFF;
+            if ((r * 30 + gg * 59 + b * 11) / 100 < 90) {
+                ++count;
+                break;
+            }
+        }
+    }
+    SelectObject(mem, old);
+    DeleteObject(bmp);
+    DeleteDC(mem);
+    ReleaseDC(nullptr, screen);
+    return count;
+}
+
 size_t countLines(const std::wstring& s) {
     if (s.empty()) return 0;
     size_t n = 1;
@@ -233,6 +274,9 @@ void testUeCvars() {
     check(grid(w) != nullptr, "grid child exists");
     paint(w);
     shot("ue_cvars");
+    int ink = inkColumns(w);
+    std::printf("  ink columns: %d\n", ink);
+    check(ink > 250, "text is drawn with proper glyph advances (ink columns " + std::to_string(ink) + ")");
 
     std::wstring all = copySelection(w, true);
     check(countLines(all) == 7034, "select all + copy: 7034 data rows, got " + std::to_string(countLines(all)));
