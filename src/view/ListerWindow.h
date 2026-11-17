@@ -40,6 +40,7 @@ private:
     void runCommand(int id, long headerCol);
     void toggleOption(const char* key, bool& field);
     void setLastColumn(LastColumnMode mode);
+    void setAutoSize(AutoSizeMode mode);
     void copy(csv::CopyFormat fmt, bool withHeader);
     void openSettings();
     void saveZoom();

@@ -182,3 +182,33 @@ TEST_CASE("column clamp") {
     CHECK(t->columns == kMaxColumns);
     CHECK(t->cell(0, kMaxColumns - 1).size() == 11);  // "3,4,5,6,7,8" style tail
 }
+
+TEST_CASE("typical length (percentile of cell lengths)") {
+    std::string s = "h\n";
+    for (int i = 1; i <= 99; ++i) s += std::to_string(i) + "\n";  // 9 one-digit, 90 two-digit
+    s += "\"" + std::string(5000, 'x') + "\"\n";                      // one huge outlier
+    s += "\n";                                                         // empty: ignored
+    auto t = load(s);
+    REQUIRE(t->header);
+    auto p90 = t->typicalLength(0, 90);
+    CHECK_FALSE(p90.empty);
+    CHECK(p90.chars == 2);
+    CHECK_FALSE(p90.beyondHistogram);
+    REQUIRE_FALSE(p90.rows.empty());
+    CHECK(t->cell(p90.rows[0], 0).size() == 2);
+    CHECK(t->typicalLength(0, 5).chars == 1);
+    auto p100 = t->typicalLength(0, 100);
+    CHECK(p100.beyondHistogram);  // the outlier
+    // no header: row 0 counts
+    LoadOptions o;
+    o.headerMode = HeaderMode::Off;
+    auto n = load("abcdef\nx\n", o);
+    CHECK(n->typicalLength(0, 100).chars == 6);
+    CHECK(n->typicalLength(0, 50).chars == 1);
+    // empty column
+    auto e = load("a,b\n1,\n2,\n");
+    CHECK(e->typicalLength(1, 90).empty);
+    // multi-byte characters count once
+    auto u = load("h\n\xD0\x96\xD0\x96\xD0\x96\n");
+    CHECK(u->typicalLength(0, 90).chars == 3);
+}

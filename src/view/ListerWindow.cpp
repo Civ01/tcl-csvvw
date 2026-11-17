@@ -212,7 +212,8 @@ GridOptions ListerWindow::gridOptions() const {
     o.fontFace = win::widen(cfg_.fontFace);
     o.fontSize = cfg_.fontSize;
     o.zoom = zoom_;
-    o.autoSize = cfg_.autoSizeColumns;
+    o.autoSize = cfg_.autoSize;
+    o.autoSizePercentile = cfg_.autoSizePercentile;
     o.maxAutoWidth = cfg_.maxAutoWidth;
     o.minColumnWidth = cfg_.minColumnWidth;
     o.defaultColumnWidth = cfg_.defaultColumnWidth;
@@ -459,7 +460,14 @@ void ListerWindow::showContextMenu(POINT pt, long headerCol) {
         AppendMenuW(m, MF_STRING | enabled(hasTable) | flag(hasTable && table_->header), IDM_HEADER,
                     L"First row is &header");
         AppendMenuW(m, MF_STRING | flag(cfg_.multilineCells), IDM_MULTILINE, L"Show line &breaks in cells");
-        AppendMenuW(m, MF_STRING | flag(cfg_.autoSizeColumns), IDM_AUTOSIZE, L"A&uto-size columns");
+        HMENU am = CreatePopupMenu();
+        AppendMenuW(am, MF_STRING | flag(cfg_.autoSize == AutoSizeMode::Largest), IDM_AUTOSIZE,
+                    L"By &largest value");
+        std::wstring typical = L"By &typical value (" + std::to_wstring(cfg_.autoSizePercentile) +
+                               L"th percentile of lengths)";
+        AppendMenuW(am, MF_STRING | flag(cfg_.autoSize == AutoSizeMode::Typical), IDM_AUTOSIZE_TYPICAL,
+                    typical.c_str());
+        AppendMenuW(m, MF_POPUP, reinterpret_cast<UINT_PTR>(am), L"A&uto-size columns");
         HMENU lm = CreatePopupMenu();
         AppendMenuW(lm, MF_STRING | flag(cfg_.lastColumn == LastColumnMode::Fit), IDM_LAST_FIT,
                     L"&Fully-fit last column");
@@ -489,6 +497,14 @@ void ListerWindow::toggleOption(const char* key, bool& field) {
 void ListerWindow::setLastColumn(LastColumnMode mode) {
     cfg_.lastColumn = cfg_.lastColumn == mode ? LastColumnMode::Normal : mode;
     Settings::saveGeneralValue(win::iniPath(), "last_column", getGeneralValue(cfg_, "last_column"),
+                               win::ansiConverter());
+    grid_.setOptions(gridOptions());
+}
+
+// Exclusive submenu items; clicking the active one turns auto-size off.
+void ListerWindow::setAutoSize(AutoSizeMode mode) {
+    cfg_.autoSize = cfg_.autoSize == mode ? AutoSizeMode::Off : mode;
+    Settings::saveGeneralValue(win::iniPath(), "auto_size_columns", getGeneralValue(cfg_, "auto_size_columns"),
                                win::ansiConverter());
     grid_.setOptions(gridOptions());
 }
@@ -527,10 +543,8 @@ void ListerWindow::runCommand(int id, long headerCol) {
             toggleOption("multiline_cells", cfg_.multilineCells);
             grid_.setOptions(gridOptions());
             break;
-        case IDM_AUTOSIZE:
-            toggleOption("auto_size_columns", cfg_.autoSizeColumns);
-            grid_.setOptions(gridOptions());
-            break;
+        case IDM_AUTOSIZE: setAutoSize(AutoSizeMode::Largest); break;
+        case IDM_AUTOSIZE_TYPICAL: setAutoSize(AutoSizeMode::Typical); break;
         case IDM_LAST_FIT: setLastColumn(LastColumnMode::Fit); break;
         case IDM_LAST_WRAP: setLastColumn(LastColumnMode::Wrap); break;
         case IDM_ROWNUM:

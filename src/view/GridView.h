@@ -27,7 +27,8 @@ struct GridOptions {
     std::wstring fontFace = L"Segoe UI";
     int fontSize = 10;
     int zoom = 100;
-    bool autoSize = true;
+    AutoSizeMode autoSize = AutoSizeMode::Largest;
+    int autoSizePercentile = 90;
     int maxAutoWidth = 400, minColumnWidth = 40, defaultColumnWidth = 100, maxFitWidth = 4000;
     LastColumnMode lastColumn = LastColumnMode::Normal;
     bool multiline = false;
@@ -107,6 +108,9 @@ private:
     void computeMetrics();
     void computeBaseWidths(bool keepManual);
     int measureFitPx(size_t col, bool withHeader);
+    int measureTypicalPx(size_t col);
+    int measureHeaderPx(size_t col);
+    int measureCellPx(size_t fileRow, size_t col);
     int measureText(HFONT f, std::u16string_view s);
     void layoutColumns();
     void layoutRows();

@@ -179,6 +179,7 @@ public:
     void init() override {
         for (const auto& f : allFonts()) comboAdd(item(IDC_VIEW_FONT), f);
         fillChoices(item(IDC_VIEW_LASTCOL), "last_column");
+        fillChoices(item(IDC_VIEW_AUTOSIZE), "auto_size_columns");
         auto range = [&](int spin, const char* key) {
             auto* o = findGeneralOption(key);
             SendMessageW(item(spin), UDM_SETRANGE32, static_cast<WPARAM>(o->minValue), static_cast<LPARAM>(o->maxValue));
@@ -197,7 +198,8 @@ public:
         SendMessageW(item(IDC_VIEW_ZOOM_SPIN), UDM_SETPOS32, 0, c.zoom);
         SendMessageW(item(IDC_VIEW_MAXLINES_SPIN), UDM_SETPOS32, 0, c.maxCellLines);
         setChecked(item(IDC_VIEW_REMEMBER_ZOOM), c.rememberZoom);
-        setChecked(item(IDC_VIEW_AUTOSIZE), c.autoSizeColumns);
+        comboSelect(item(IDC_VIEW_AUTOSIZE), win::widen(getGeneralValue(c, "auto_size_columns")));
+        setText(item(IDC_VIEW_PERCENTILE), std::to_string(c.autoSizePercentile));
         setText(item(IDC_VIEW_MAXAUTO), std::to_string(c.maxAutoWidth));
         setText(item(IDC_VIEW_MINW), std::to_string(c.minColumnWidth));
         setText(item(IDC_VIEW_DEFW), std::to_string(c.defaultColumnWidth));
@@ -217,7 +219,7 @@ public:
         for (F f : {F{IDC_VIEW_FONT, "font_face"}, F{IDC_VIEW_FONTSIZE, "font_size"}, F{IDC_VIEW_ZOOM, "zoom"},
                     F{IDC_VIEW_MAXAUTO, "max_auto_width"}, F{IDC_VIEW_MINW, "min_column_width"},
                     F{IDC_VIEW_DEFW, "default_column_width"}, F{IDC_VIEW_MAXFIT, "max_fit_width"},
-                    F{IDC_VIEW_MAXLINES, "max_cell_lines"}, F{IDC_VIEW_LBFALLBACK, "linebreak_fallback"}}) {
+                    F{IDC_VIEW_MAXLINES, "max_cell_lines"}, F{IDC_VIEW_PERCENTILE, "auto_size_percentile"}, F{IDC_VIEW_LBFALLBACK, "linebreak_fallback"}}) {
             err = checkOption(f.key, getTextUtf8(item(f.id)));
             if (!err.empty()) return item(f.id);
         }
@@ -235,7 +237,8 @@ public:
         setGeneralValue(c, "max_cell_lines", getTextUtf8(item(IDC_VIEW_MAXLINES)));
         setGeneralValue(c, "last_column", win::narrow(comboText(item(IDC_VIEW_LASTCOL))));
         c.rememberZoom = checked(item(IDC_VIEW_REMEMBER_ZOOM));
-        c.autoSizeColumns = checked(item(IDC_VIEW_AUTOSIZE));
+        setGeneralValue(c, "auto_size_columns", win::narrow(comboText(item(IDC_VIEW_AUTOSIZE))));
+        setGeneralValue(c, "auto_size_percentile", getTextUtf8(item(IDC_VIEW_PERCENTILE)));
         c.multilineCells = checked(item(IDC_VIEW_MULTILINE));
         c.showRowNumbers = checked(item(IDC_VIEW_ROWNUM));
         c.freezeFirstColumn = checked(item(IDC_VIEW_FREEZE));

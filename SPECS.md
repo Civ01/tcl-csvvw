@@ -230,7 +230,15 @@ With a header, row 1 becomes the column header captions and is excluded from sor
 
 ### 6.3 Columns and auto-size
 
-- Auto-size is on by default (`auto_size_columns`). It is also a right-click toggle.
+- **Auto-size modes** (`auto_size_columns`): Right-click → **Auto-size columns ▸** has *By largest value* and *By typical value*. They are mutually exclusive and both may be off, the same pattern as *Last column*.
+  - **largest** (default): the column fits its widest value, as described below.
+  - **typical:** the column fits the cell length at `auto_size_percentile` (default 90) of the column's non-empty cells. At 90, nine values in ten fit; a few very long values don't widen the column and are drawn with `…`. The header caption always fits.
+    - A percentile is used rather than the mean, because one huge outlier would still pull the mean up.
+    - The load pass records a per-column histogram of cell lengths (0–127 characters, plus one bucket for longer cells) and the first row of each length. The example cells at the percentile length (and its neighbours) are measured with GDI, so proportional fonts are handled exactly.
+    - If the percentile falls into the "longer" bucket, typical behaves like largest.
+  - **off:** `default_column_width`.
+  - Older INI files with `true` / `false` mean largest / off.
+  - *Fit all columns* uses the current mode (largest when auto-size is off).
 - **Fit width** = the widest of the header caption and the column's content, clamped to `[min_column_width, max_auto_width]`. Defaults are 40 px and **400 px**.
 - **Measuring cost:** `ColumnStats` keeps the 8 longest cells (by character count, capped) per column. Only those, plus the caption, are measured with `GetTextExtentPoint32W`. This is exact enough for proportional fonts and costs O(columns) per measure.
 - Widths are stored at zoom 100% and scaled proportionally on zoom, with no re-measuring.
@@ -389,7 +397,7 @@ A column is number or date when at least `type_threshold` (default 90%) of its n
 **Grid:**
 - Copy · Copy as CSV · Copy with header · Select all
 - Delimiter ▸ (Auto · `,` · `;` · Tab · `|`) · Encoding ▸ (Auto · UTF-8 · UTF-16 LE · UTF-16 BE · ANSI)
-- ☐ First row is header · ☐ Show line breaks in cells · ☐ Auto-size columns · Last column ▸ (☐ Fully-fit last column · ☐ Wrap text in last column; exclusive, both may be off, §6.3.1) · ☐ Row numbers · ☐ Freeze first column · ☐ Status bar
+- ☐ First row is header · ☐ Show line breaks in cells · Auto-size columns ▸ (☐ By largest value · ☐ By typical value; exclusive, both may be off) · Last column ▸ (☐ Fully-fit last column · ☐ Wrap text in last column; exclusive, both may be off, §6.3.1) · ☐ Row numbers · ☐ Freeze first column · ☐ Status bar
 - Restore original order · Reset zoom
 - Settings…
 
@@ -436,7 +444,8 @@ font_size=10
 zoom=100                      ; 50..400, written on close when remember_zoom=true
 remember_zoom=true
 
-auto_size_columns=true
+auto_size_columns=largest     ; off | largest | typical
+auto_size_percentile=90       ; typical: percentile of the cell lengths (10 .. 100)
 max_auto_width=400            ; px at 100% zoom
 min_column_width=40
 default_column_width=100      ; used when auto_size_columns=false

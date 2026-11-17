@@ -146,7 +146,8 @@ void GridView::setOptions(const GridOptions& opt) {
     opt_ = opt;
     const bool fontChanged = old.fontFace != opt.fontFace || old.fontSize != opt.fontSize || old.zoom != opt.zoom ||
                              old.linebreakFallback != opt.linebreakFallback;
-    const bool measureChanged = fontChanged || old.autoSize != opt.autoSize || old.multiline != opt.multiline ||
+    const bool measureChanged = fontChanged || old.autoSize != opt.autoSize ||
+                                old.autoSizePercentile != opt.autoSizePercentile || old.multiline != opt.multiline ||
                                 old.maxAutoWidth != opt.maxAutoWidth || old.minColumnWidth != opt.minColumnWidth ||
                                 old.defaultColumnWidth != opt.defaultColumnWidth ||
                                 old.maxCellChars != opt.maxCellChars;
@@ -282,28 +283,45 @@ int GridView::measureText(HFONT f, std::u16string_view s) {
     return sz.cx;
 }
 
+// Text width of the header caption including the sort arrow space.
+int GridView::measureHeaderPx(size_t col) {
+    if (col >= captions_.size()) return 0;
+    return measureText(bold_, captions_[col]) + measureText(bold_, u"\u25B2") + padX_;
+}
+
+// Text width of one cell as displayed (widest own line in multi-line mode).
+int GridView::measureCellPx(size_t fileRow, size_t col) {
+    CellText ct = cellTextUncached(fileRow, col);
+    if (ct.text.empty()) return 0;
+    int w = 0;
+    if (opt_.multiline) {
+        for (auto& l : csv::ownLines(ct.text)) w = std::max(w, measureText(font_, l.text));
+    } else {
+        w = measureText(font_, csv::singleLine(ct.text).text);
+    }
+    if (ct.capped) w += ellipsisW_;
+    return w;
+}
+
+// "Largest value": the widest of the longest cells (by character count).
 int GridView::measureFitPx(size_t col, bool withHeader) {
-    int best = 0;
-    if (withHeader && col < captions_.size()) {
-        // sort arrow space
-        best = measureText(bold_, captions_[col]) + measureText(bold_, u"▲") + padX_;
-    }
-    auto measureCell = [&](size_t fileRow) {
-        CellText ct = cellTextUncached(fileRow, col);
-        if (ct.text.empty()) return;
-        int w = 0;
-        if (opt_.multiline) {
-            for (auto& l : csv::ownLines(ct.text)) w = std::max(w, measureText(font_, l.text));
-        } else {
-            w = measureText(font_, csv::singleLine(ct.text).text);
-        }
-        if (ct.capped) w += ellipsisW_;
-        best = std::max(best, w);
-    };
+    int best = withHeader ? measureHeaderPx(col) : 0;
     if (table_ && col < table_->stats.size()) {
-        for (auto& [len, row] : table_->stats[col].longest) measureCell(row);
-        if (!table_->header && table_->fileRows() > 0) measureCell(0);
+        for (auto& [len, row] : table_->stats[col].longest) best = std::max(best, measureCellPx(row, col));
+        if (!table_->header && table_->fileRows() > 0) best = std::max(best, measureCellPx(0, col));
     }
+    return best + 2 * padX_ + 1;
+}
+
+// "Typical value": cells at the auto_size_percentile of the column's cell
+// lengths are measured, so a few very long values do not widen the column
+// (they are drawn with an ellipsis). The header caption always fits.
+int GridView::measureTypicalPx(size_t col) {
+    if (!table_) return 0;
+    auto tl = table_->typicalLength(col, opt_.autoSizePercentile);
+    if (tl.beyondHistogram) return measureFitPx(col, true);  // typical cells are very long anyway
+    int best = measureHeaderPx(col);
+    for (uint32_t row : tl.rows) best = std::max(best, measureCellPx(row, col));
     return best + 2 * padX_ + 1;
 }
 
@@ -313,11 +331,12 @@ void GridView::computeBaseWidths(bool keepManual) {
     for (size_t c = 0; c < table_->columns; ++c) {
         if (keepManual && manualW_[c]) continue;
         manualW_[c] = false;
-        if (!opt_.autoSize) {
+        if (opt_.autoSize == AutoSizeMode::Off) {
             baseW_[c] = std::max(opt_.minColumnWidth, opt_.defaultColumnWidth);
             continue;
         }
-        int fit = static_cast<int>(std::ceil(measureFitPx(c, true) / s));
+        int measured = opt_.autoSize == AutoSizeMode::Typical ? measureTypicalPx(c) : measureFitPx(c, true);
+        int fit = static_cast<int>(std::ceil(measured / s));
         baseW_[c] = std::clamp(fit, opt_.minColumnWidth, std::max(opt_.minColumnWidth, opt_.maxAutoWidth));
     }
 }
@@ -333,7 +352,11 @@ void GridView::fitColumn(size_t col) {
 
 void GridView::fitAllColumns() {
     if (!table_) return;
+    // Uses the current auto-size mode; with auto-size off it fits by the largest value.
+    AutoSizeMode saved = opt_.autoSize;
+    if (saved == AutoSizeMode::Off) opt_.autoSize = AutoSizeMode::Largest;
     computeBaseWidths(false);
+    opt_.autoSize = saved;
     relayout(true);
     InvalidateRect(hwnd_, nullptr, FALSE);
 }

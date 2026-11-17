@@ -40,7 +40,7 @@ Add* and pick `tcl-csvvw.wlx64`. `tcl-csvvw.ini` must stay next to the plugin.
 All other keys go to Lister (Esc, N/P, 1–7, …).
 
 Right-click the table for: delimiter and encoding overrides (current file), *First row is header*,
-*Show line breaks in cells*, *Auto-size columns*, *Last column → Fully-fit / Wrap text*,
+*Show line breaks in cells*, *Auto-size columns → By largest / typical value*, *Last column → Fully-fit / Wrap text*,
 *Row numbers*, *Freeze first column*, *Status bar*, *Restore original order*, *Reset zoom* and
 *Settings…*. Toggles are saved to the INI immediately.
 
@@ -59,7 +59,7 @@ Everything is in `tcl-csvvw.ini` (fully commented; UTF-8, UTF-16 with BOM or ANS
 | `type_threshold` / `header_type_threshold` | `90` / `75` | % of a column's cells that must be numbers/dates to sort as such / to detect a header |
 | `font_face` / `font_size` | `Segoe UI` / `10` | Table font |
 | `zoom` / `remember_zoom` | `100` / `true` | Start zoom; with remember_zoom the last zoom is saved |
-| `auto_size_columns`, `max_auto_width` | `true`, `400` | Fit columns to content, up to the limit (px at 100%) |
+| `auto_size_columns`, `max_auto_width` | `largest`, `400` | `largest` fits the widest value, `typical` fits the value length at `auto_size_percentile` (90) so rare long values don't widen the column, `off`; up to the limit (px at 100%) |
 | `max_fit_width` | `4000` | Limit for fully-fit last column / divider double-click |
 | `last_column` | `normal` | `fit` = as wide as its widest cell, `wrap` = wrap long text, filling the window |
 | `multiline_cells`, `max_cell_lines` | `false`, `8` | Show a cell's own line breaks as separate lines |

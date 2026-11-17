@@ -274,6 +274,10 @@ void testUeCvars() {
     check(grid(w) != nullptr, "grid child exists");
     paint(w);
     shot("ue_cvars");
+    menu(w, IDM_AUTOSIZE_TYPICAL);
+    paint(w);
+    shot("ue_typical");
+    menu(w, IDM_AUTOSIZE);
     int ink = inkColumns(w);
     std::printf("  ink columns: %d\n", ink);
     check(ink > 250, "text is drawn with proper glyph advances (ink columns " + std::to_string(ink) + ")");
@@ -347,6 +351,13 @@ void testModes() {
     check(ini.find("freeze_first_column=true") != std::string::npos, "freeze saved");
     // undo toggles
     for (int id : {IDM_MULTILINE, IDM_LAST_FIT, IDM_FREEZE, IDM_ROWNUM, IDM_STATUSBAR, IDM_AUTOSIZE}) menu(w, id);
+    check(readIni().find("auto_size_columns=largest") != std::string::npos, "auto-size back to largest");
+    menu(w, IDM_AUTOSIZE_TYPICAL);
+    paint(w);
+    shot("m8_typical");
+    check(readIni().find("auto_size_columns=typical") != std::string::npos, "auto-size typical saved");
+    menu(w, IDM_AUTOSIZE);  // largest (exclusive)
+    check(readIni().find("auto_size_columns=largest") != std::string::npos, "auto-size largest replaces typical");
     ini = readIni();
     check(ini.find("last_column=normal") != std::string::npos, "second click turns last-column mode off");
 

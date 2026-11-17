@@ -15,6 +15,7 @@ namespace csvvw {
 
 enum class ThemeChoice { Auto, Light, Dark };
 enum class LastColumnMode { Normal, Fit, Wrap };
+enum class AutoSizeMode { Off, Largest, Typical };
 
 // View colors, 0xRRGGBB.
 struct Palette {
@@ -48,7 +49,8 @@ struct Config {
     int zoom = 100;
     bool rememberZoom = true;
 
-    bool autoSizeColumns = true;
+    AutoSizeMode autoSize = AutoSizeMode::Largest;
+    int autoSizePercentile = 90;  // "typical" = this percentile of the cell lengths
     int maxAutoWidth = 400;
     int minColumnWidth = 40;
     int defaultColumnWidth = 100;

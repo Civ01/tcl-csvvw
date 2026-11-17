@@ -42,6 +42,20 @@ struct ColumnStats {
     // Up to kLongestPerColumn (byte length, file row) of the longest cells (row 0 excluded).
     std::vector<std::pair<uint32_t, uint32_t>> longest;
     uint32_t row0Length = 0;
+    // Length distribution of non-empty cells in characters (row 0 excluded):
+    // lenHist[n] for n < kLenBuckets-1, the last bucket counts longer cells.
+    // lenExample[n] = first file row with that length (UINT32_MAX = none).
+    static constexpr size_t kLenBuckets = 129;
+    std::vector<uint32_t> lenHist, lenExample;
+    uint32_t row0Chars = 0;  // 0 = empty
+};
+
+// Result of Table::typicalLength().
+struct TypicalLength {
+    bool empty = true;           // no non-empty cells
+    bool beyondHistogram = false;  // the percentile falls into the "longer" bucket
+    uint32_t chars = 0;          // length (characters) at the percentile
+    std::vector<uint32_t> rows;  // example file rows with about that length (for measuring)
 };
 
 class Table {
@@ -78,6 +92,10 @@ public:
     // Column type for sorting / alignment, over data rows.
     ValueKind columnType(size_t col) const;
     CommaMode commaMode(size_t col) const;
+
+    // Cell length at the given percentile of the column's non-empty cells
+    // (data rows; row 0 too when there is no header).
+    TypicalLength typicalLength(size_t col, int percentile) const;
 
     // Spreadsheet-style column name: A, B, ..., Z, AA, ...
     static std::string columnLetters(size_t col);

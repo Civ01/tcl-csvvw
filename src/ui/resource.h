@@ -41,6 +41,7 @@
 #define IDC_VIEW_ZEBRA 1319
 #define IDC_VIEW_ALIGN 1320
 #define IDC_VIEW_LBFALLBACK 1321
+#define IDC_VIEW_PERCENTILE 1322
 
 #define IDD_PAGE_COLORS 105
 #define IDC_COL_THEME 1401
@@ -59,7 +60,8 @@
 #define IDM_SELECTALL 40004
 #define IDM_HEADER 40010
 #define IDM_MULTILINE 40011
-#define IDM_AUTOSIZE 40012
+#define IDM_AUTOSIZE 40012          // by largest value
+#define IDM_AUTOSIZE_TYPICAL 40018  // by typical value
 #define IDM_LAST_FIT 40013
 #define IDM_LAST_WRAP 40014
 #define IDM_ROWNUM 40015

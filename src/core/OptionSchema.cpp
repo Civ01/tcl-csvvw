@@ -179,7 +179,28 @@ std::vector<OptionDef> buildOptions() {
     o.push_back(intOpt("font_size", "Font size", CSVVW_REF(int, fontSize), 4, 72));
     o.push_back(intOpt("zoom", "Zoom (%)", CSVVW_REF(int, zoom), 50, 400));
     o.push_back(boolOpt("remember_zoom", "Remember zoom", CSVVW_REF(bool, rememberZoom)));
-    o.push_back(boolOpt("auto_size_columns", "Auto-size columns", CSVVW_REF(bool, autoSizeColumns)));
+    {
+        // off | largest | typical; true/false accepted (older INI files).
+        OptionDef d{"auto_size_columns", OptionType::Enum, "Auto-size columns", "largest"};
+        d.choices = {"off", "largest", "typical"};
+        d.get = [](const Config& c) {
+            return std::string(c.autoSize == AutoSizeMode::Off       ? "off"
+                               : c.autoSize == AutoSizeMode::Typical ? "typical"
+                                                                     : "largest");
+        };
+        d.set = [](Config& c, std::string_view v) {
+            v = trim(v);
+            bool b;
+            if (iequals(v, "largest")) c.autoSize = AutoSizeMode::Largest;
+            else if (iequals(v, "typical")) c.autoSize = AutoSizeMode::Typical;
+            else if (iequals(v, "off")) c.autoSize = AutoSizeMode::Off;
+            else if (parseBool(v, b)) c.autoSize = b ? AutoSizeMode::Largest : AutoSizeMode::Off;
+            else return false;
+            return true;
+        };
+        o.push_back(std::move(d));
+    }
+    o.push_back(intOpt("auto_size_percentile", "Typical width percentile", CSVVW_REF(int, autoSizePercentile), 10, 100));
     o.push_back(intOpt("max_auto_width", "Auto-size width limit", CSVVW_REF(int, maxAutoWidth), 40, 4000));
     o.push_back(intOpt("min_column_width", "Minimum column width", CSVVW_REF(int, minColumnWidth), 10, 400));
     o.push_back(intOpt("default_column_width", "Default column width", CSVVW_REF(int, defaultColumnWidth), 20, 2000));

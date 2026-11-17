@@ -81,6 +81,43 @@ CommaMode Table::commaMode(size_t col) const {
     return stats[col].commaDecimalVotes > stats[col].commaThousandsVotes ? CommaMode::Decimal : CommaMode::Thousands;
 }
 
+TypicalLength Table::typicalLength(size_t col, int pct) const {
+    TypicalLength r;
+    if (col >= stats.size()) return r;
+    const ColumnStats& s = stats[col];
+    constexpr size_t B = ColumnStats::kLenBuckets;
+    std::vector<uint32_t> hist = s.lenHist, ex = s.lenExample;
+    if (hist.empty()) {
+        hist.assign(B, 0);
+        ex.assign(B, UINT32_MAX);
+    }
+    if (!header && fileRows() > 0 && s.row0Chars > 0) {
+        size_t b = std::min<size_t>(s.row0Chars, B - 1);
+        ++hist[b];
+        if (ex[b] == UINT32_MAX) ex[b] = 0;
+    }
+    uint64_t total = 0;
+    for (auto h : hist) total += h;
+    if (total == 0) return r;
+    pct = std::clamp(pct, 1, 100);
+    const uint64_t target = std::max<uint64_t>(1, (total * static_cast<uint64_t>(pct) + 99) / 100);
+    uint64_t cum = 0;
+    size_t b = 0;
+    for (; b < B; ++b) {
+        cum += hist[b];
+        if (cum >= target) break;
+    }
+    b = std::min(b, B - 1);
+    r.empty = false;
+    r.chars = static_cast<uint32_t>(b);
+    r.beyondHistogram = b == B - 1;
+    // Examples at that length (and its neighbours, for glyph width variety).
+    for (size_t k : {b, b > 0 ? b - 1 : b, b + 1 < B - 1 ? b + 1 : b})
+        if (ex[k] != UINT32_MAX && std::find(r.rows.begin(), r.rows.end(), ex[k]) == r.rows.end())
+            r.rows.push_back(ex[k]);
+    return r;
+}
+
 std::string Table::columnLetters(size_t col) {
     std::string s;
     size_t n = col + 1;
@@ -187,6 +224,13 @@ void noteLongest(ColumnStats& s, uint32_t len, uint32_t row) {
     if (len > it->first) *it = {len, row};
 }
 
+uint32_t charCount(std::string_view v) {
+    uint32_t n = 0;
+    for (char c : v)
+        if ((static_cast<unsigned char>(c) & 0xC0) != 0x80) ++n;
+    return n;
+}
+
 // Fast reject for obvious text so the classification pass stays cheap.
 bool mayBeNumberOrDate(std::string_view v) {
     for (char c : v) {
@@ -244,10 +288,21 @@ std::unique_ptr<Table> loadTable(std::string&& bytes, const LoadOptions& opt, co
             CommaHint hint = CommaHint::None;
             if (!isBlank(val)) kind = mayBeNumberOrDate(val) ? classify(val, CommaMode::Thousands, nullptr, &hint)
                                                               : ValueKind::Text;
+            const uint32_t chars = kind == ValueKind::Empty ? 0 : charCount(val);
             if (r == 0) {
                 s.row0Kind = kind;
                 s.row0Length = f[c].length;
+                s.row0Chars = chars;
                 continue;
+            }
+            if (chars > 0) {
+                if (s.lenHist.empty()) {
+                    s.lenHist.assign(ColumnStats::kLenBuckets, 0);
+                    s.lenExample.assign(ColumnStats::kLenBuckets, UINT32_MAX);
+                }
+                size_t b = std::min<size_t>(chars, ColumnStats::kLenBuckets - 1);
+                ++s.lenHist[b];
+                if (s.lenExample[b] == UINT32_MAX) s.lenExample[b] = static_cast<uint32_t>(r);
             }
             if (kind != ValueKind::Empty) ++s.nonEmpty;
             if (kind == ValueKind::Number) ++s.numbers;

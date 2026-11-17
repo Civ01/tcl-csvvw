@@ -71,7 +71,10 @@ BEGIN
     AUTOCHECKBOX    "&Remember zoom (Ctrl+wheel)", IDC_VIEW_REMEMBER_ZOOM, 112, 30, 190, 10
 
     GROUPBOX        "Columns (pixels at 100% zoom)", -1, 4, 50, 308, 76
-    AUTOCHECKBOX    "&Auto-size columns to fit their content", IDC_VIEW_AUTOSIZE, 12, 63, 200, 10
+    LTEXT           "&Auto-size:", -1, 12, 63, 70, 9
+    COMBOBOX        IDC_VIEW_AUTOSIZE, 84, 61, 70, 60, CBS_DROPDOWNLIST | WS_VSCROLL | WS_TABSTOP
+    LTEXT           "T&ypical = percentile:", -1, 160, 63, 70, 9
+    EDITTEXT        IDC_VIEW_PERCENTILE, 232, 61, 36, 12, ES_NUMBER
     LTEXT           "Auto-size &limit:", -1, 12, 79, 70, 9
     EDITTEXT        IDC_VIEW_MAXAUTO, 84, 77, 36, 12, ES_NUMBER
     LTEXT           "Fully-fit li&mit:", -1, 160, 79, 70, 9

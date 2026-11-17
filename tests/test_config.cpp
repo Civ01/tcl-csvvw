@@ -169,3 +169,18 @@ TEST_CASE("thresholds are options") {
     CHECK(c.headerTypeThreshold == 60);
     CHECK_FALSE(setGeneralValue(c, "type_threshold", "40"));
 }
+
+TEST_CASE("auto_size_columns: modes and legacy booleans") {
+    Config c;
+    CHECK(c.autoSize == AutoSizeMode::Largest);
+    CHECK(setGeneralValue(c, "auto_size_columns", "typical"));
+    CHECK(c.autoSize == AutoSizeMode::Typical);
+    CHECK(setGeneralValue(c, "auto_size_columns", "false"));
+    CHECK(c.autoSize == AutoSizeMode::Off);
+    CHECK(setGeneralValue(c, "auto_size_columns", "true"));
+    CHECK(c.autoSize == AutoSizeMode::Largest);
+    CHECK(getGeneralValue(c, "auto_size_columns") == "largest");
+    CHECK_FALSE(setGeneralValue(c, "auto_size_columns", "maybe"));
+    CHECK(setGeneralValue(c, "auto_size_percentile", "50"));
+    CHECK_FALSE(setGeneralValue(c, "auto_size_percentile", "5"));
+}
